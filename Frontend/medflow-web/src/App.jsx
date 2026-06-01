@@ -1,10 +1,21 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+
+import LoginPage from "./pages/LoginPage";
+import MedflowSupport from "./components/MedflowSupport";
+import HomeScreen from "./pages/HomeScreen";
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <h1 className="text-5xl font-bold text-red-600">
-        Tailwind Works!
-      </h1>
-    </div>
+      <>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/medflowSupport" element={<MedflowSupport />} />
+            <Route path="/homescreen" element={<HomeScreen />} />
+          </Routes>
+        </Router>
+      </>
   );
 }
 
