@@ -9,7 +9,7 @@ export default function AuthCard() {
     };
 
     const handleLogin = () => { 
-        navigate("/homescreen");
+        navigate("/ReceptionistDash");
     }
 
   return (

@@ -1,4 +1,4 @@
-import AuthCard from "../components/AuthCard"; 
+import AuthCard from "../components/layout/AuthCard"; 
 import logo from "../assets/medflow-logo.jpg";
 
 export default function LoginPage() { 
