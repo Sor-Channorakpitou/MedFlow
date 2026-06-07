@@ -5,7 +5,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -70,6 +69,7 @@ model User {
   invoices Invoice[]
   appointments Appointment[]
   triages Triage[]
+  refreshTokens RefreshToken[]
 
   // Relationship
   roleId Int 
@@ -224,4 +224,13 @@ model Triage {
 
   userId Int
   user User @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
