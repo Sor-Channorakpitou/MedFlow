@@ -59,7 +59,7 @@ model User {
   email String @unique 
   name String
   phone String?
-  dateOfBirth DateTime
+  dateOfBirth DateTime @db.Date
   passwordHash String
   createdAt DateTime @default(now())
 
