@@ -8,7 +8,7 @@ function SymptomsAndActions({ symptoms, onToggle }) {
   ];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm text-left flex flex-col justify-between space-y-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm text-left flex flex-col justify-between space-y-3">
       
       {/* Symptoms Box */}
       <div>

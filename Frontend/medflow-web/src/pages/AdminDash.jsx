@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import AnalyticsMetrics from '../components/admin/AnalyticsMetrics';
 import PatientVolumeChart from '../components/admin/PatientVolumeChart';
 import WorkloadBreakdown from '../components/admin/WorkloadBreakdown';
-import StaffOrchestrationTable from '../components/admin/StaffOrchestrationTable';
+import StaffOrchestrationTable from '../components/admin/StaffOrchestrationTable'; 
+import Header from '../components/Header';
 
 import { Calendar, FileText } from 'lucide-react';
 
@@ -19,6 +20,7 @@ function AdminDash() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6 text-left">
+      <Header/>
       
       {/* 1. Admin Header Panel */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-gray-200 pb-5">

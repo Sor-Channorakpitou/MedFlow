@@ -10,7 +10,7 @@ function SoapNotesForm({ data, onChange }) {
   ];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm text-left">
+    <div className="bg-white border border-gray-200 rounded-xl p-2 shadow-sm text-left">
       <div className="flex items-center gap-2 border-b border-gray-50 pb-3 mb-4">
         <FileText className="w-4 h-4 text-gray-400" />
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Clinical SOAP Notes</h3>

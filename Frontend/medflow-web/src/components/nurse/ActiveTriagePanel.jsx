@@ -1,102 +1,156 @@
-// components/nurse/ActiveTriagePanel.tsx
+// components/nurse/ActiveTriagePanel.jsx
 import React from 'react';
-import { ShieldAlert, AlertTriangle, Info, ShieldCheck, ArrowRight, Save, Activity, Heart, Thermometer, Droplet } from 'lucide-react';
+import { Send, ArrowUp, Zap, Thermometer, CheckCircle2 } from 'lucide-react';
 
-export default function ActiveTriagePanel() {
+function VitalCard({ label, value, suffix, status, icon: Icon, className = '' }) {
+  const statusBadgeClass = (statusStr) => {
+    switch (statusStr) {
+      case 'HYPERTENSIVE': return 'text-rose-600 bg-rose-50';
+      case 'ELEVATED': return 'text-amber-600 bg-amber-50';
+      case 'NORMAL': return 'text-emerald-600 bg-emerald-50';
+      case 'TACHYCARDIA': return 'text-rose-600 bg-rose-50';
+      case 'FEVER': return 'text-amber-600 bg-amber-50';
+      case 'LOW': return 'text-rose-600 bg-rose-50';
+      default: return 'text-gray-500 bg-gray-100';
+    }
+  };
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-      {/* Title Header */}
-      <div className="bg-teal-950 text-white p-4 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] bg-teal-800 px-2 py-0.5 rounded font-bold tracking-wider">ACTIVE TRIAGE</span>
-          <h3 className="font-extrabold text-base tracking-wide mt-0.5">MARCUS, ELIAS</h3>
-        </div>
-        <span className="text-xs font-bold bg-teal-900 border border-teal-700 px-2.5 py-1 rounded text-teal-300">
-          EMERGENCY ROOM 2A
+    <div className={`relative border border-gray-200 rounded-lg bg-white p-3 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[10px] font-semibold tracking-wide uppercase text-gray-400">{label}</span>
+        {Icon && <Icon className="h-4 w-4 text-gray-400" />}
+      </div>
+      <div className="mt-2 flex items-end gap-1 font-mono">
+        <span className="text-lg font-bold text-gray-900">{value}</span>
+        {suffix && <span className="pb-0.5 text-xs text-gray-400">{suffix}</span>}
+      </div>
+      {status && (
+        <span className={`absolute bottom-2 right-2 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider ${statusBadgeClass(status)}`}>
+          {status}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function ActiveTriagePanel({
+  selectedPatient,
+  urgencyLevel,
+  setUrgencyLevel,
+  vitals,
+  bpStatus,
+  notes,
+  setNotes,
+  onMoveToDoctor,
+  isSubmitting,
+  urgencyMeta
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between bg-[#0f766e] px-4 py-3 text-white">
+        <h3 className="text-xs font-bold uppercase tracking-wider">
+          Active Triage: {selectedPatient?.name || 'No Patient Selected'}
+        </h3>
+        <span className="rounded bg-teal-900/60 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-white">
+          {selectedPatient?.room || 'ER ROOM'}
         </span>
       </div>
 
-      <div className="p-5 flex-1 space-y-5 overflow-y-auto">
-        {/* Urgency Selector Controls */}
-        <div>
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Assign Urgency Level</label>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+        {/* Urgency Matrix */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Assign Urgency Level</label>
           <div className="grid grid-cols-4 gap-2">
-            <button className="flex flex-col items-center justify-center p-2.5 border-2 border-red-500 bg-red-50 text-red-600 rounded-lg">
-              <ShieldAlert className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-extrabold tracking-wider uppercase">Critical</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-2.5 border border-slate-200 bg-slate-50 text-slate-400 rounded-lg hover:border-orange-300 hover:bg-orange-50 hover:text-orange-500 transition-all">
-              <AlertTriangle className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-extrabold tracking-wider uppercase">High</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-2.5 border border-slate-200 bg-slate-50 text-slate-400 rounded-lg hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500 transition-all">
-              <Info className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-extrabold tracking-wider uppercase">Medium</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-2.5 border border-slate-200 bg-slate-50 text-slate-400 rounded-lg hover:border-green-300 hover:bg-green-50 hover:text-green-500 transition-all">
-              <ShieldCheck className="w-5 h-5 mb-1" />
-              <span className="text-[10px] font-extrabold tracking-wider uppercase">Low</span>
-            </button>
+            {Object.keys(urgencyMeta).map((lvl) => {
+              const meta = urgencyMeta[lvl];
+              const Icon = meta.icon;
+              const active = urgencyLevel === lvl;
+
+              return (
+                <button
+                  key={lvl}
+                  type="button"
+                  onClick={() => setUrgencyLevel(lvl)}
+                  className={`flex items-center justify-center gap-1 rounded border px-1 py-2 text-[10px] font-black uppercase transition ${
+                    active
+                      ? lvl === 'CRITICAL' ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
+                      : lvl === 'HIGH' ? 'border-amber-500 bg-amber-500 text-white shadow-sm'
+                      : lvl === 'MEDIUM' ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                      : 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                      : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {lvl}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Vitals Capture Field Mapping Matrix */}
-        <div>
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Vitals Recording</label>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="border border-slate-200 p-3 rounded-lg bg-slate-50/50">
-              <div className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                <Activity className="w-3.5 h-3.5 text-slate-400" /> BP <span className="text-[10px] font-normal text-slate-400">(mmHg)</span>
-              </div>
-              <div className="text-lg font-black text-slate-900 mt-1">145 <span className="text-slate-300 font-light">/</span> 95</div>
-              <span className="text-[10px] font-bold text-red-500 tracking-wide uppercase mt-0.5 inline-block">↑ Hypertensive</span>
-            </div>
-            
-            <div className="border border-slate-200 p-3 rounded-lg bg-slate-50/50">
-              <div className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                <Heart className="w-3.5 h-3.5 text-slate-400" /> HR <span className="text-[10px] font-normal text-slate-400">(bpm)</span>
-              </div>
-              <div className="text-lg font-black text-slate-900 mt-1">108</div>
-              <span className="text-[10px] font-bold text-red-500 tracking-wide uppercase mt-0.5 inline-block">🫀 Tachycardia</span>
-            </div>
-
-            <div className="border border-slate-200 p-3 rounded-lg bg-slate-50/50">
-              <div className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                <Thermometer className="w-3.5 h-3.5 text-slate-400" /> Temp <span className="text-[10px] font-normal text-slate-400">(°C)</span>
-              </div>
-              <div className="text-lg font-black text-slate-900 mt-1">38.4</div>
-              <span className="text-[10px] font-bold text-orange-500 tracking-wide uppercase mt-0.5 inline-block">🌡️ Fever</span>
-            </div>
-
-            <div className="border border-slate-200 p-3 rounded-lg bg-slate-50/50">
-              <div className="text-xs font-bold text-slate-500 flex items-center gap-1">
-                <Droplet className="w-3.5 h-3.5 text-slate-400" /> SpO2 <span className="text-[10px] font-normal text-slate-400">(%)</span>
-              </div>
-              <div className="text-lg font-black text-slate-900 mt-1">94</div>
-              <span className="text-[10px] font-bold text-emerald-600 tracking-wide uppercase mt-0.5 inline-block">✓ Normal</span>
-            </div>
+        {/* Vitals Layer */}
+        <div className="space-y-2">
+          <label className="block text-[10px] font-bold uppercase tracking-wide text-gray-400">Vitals Recording</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 ">
+            <VitalCard
+              label="BP (mmHg)"
+              value={vitals.bpSys}
+              suffix={`/ ${vitals.bpDia}`}
+              status={bpStatus}
+              icon={ArrowUp}
+            />
+            <VitalCard
+              label="HR (bpm)"
+              value={vitals.hr}
+              status={Number(vitals.hr) >= 100 ? 'TACHYCARDIA' : 'NORMAL'}
+              icon={Zap}
+            />
+            <VitalCard
+              label="Temp (°C)"
+              value={vitals.temp}
+              status={Number(vitals.temp) >= 37.8 ? 'FEVER' : 'NORMAL'}
+              icon={Thermometer}
+            />
+            <VitalCard
+              label="SpO2 (%)"
+              value={vitals.spo2}
+              status={Number(vitals.spo2) < 95 ? 'LOW' : 'NORMAL'}
+              icon={CheckCircle2}
+              className="sm:col-span-1"
+            />
           </div>
         </div>
 
-        {/* Clinical Observations Notes Input Box */}
-        <div>
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Chief Complaint / Notes</label>
-          <textarea 
+        {/* Observation Field */}
+        <div className="flex min-h-[160px] flex-1 flex-col space-y-1.5 pt-1">
+          <label className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Chief Complaint / Notes</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="Enter clinical observations..."
-            rows={3}
-            className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:outline-none focus:border-slate-400 placeholder-slate-400 text-slate-800"
-          ></textarea>
+            className="min-h-[140px] w-full flex-1 resize-none rounded border border-gray-200 bg-gray-50 p-3 text-xs outline-none transition focus:bg-white focus:ring-1 focus:ring-teal-600"
+          />
         </div>
+      </div>
 
-        {/* Action Panel Group */}
-        <div className="flex gap-2 pt-2">
-          <button className="flex-1 bg-slate-950 text-white rounded-lg py-3 px-4 font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-slate-900 shadow-md">
-            <ArrowRight className="w-4 h-4 text-[#64E5D4]" /> Move to Doctor
-          </button>
-          <button className="border border-slate-200 text-slate-700 rounded-lg py-3 px-4 font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 bg-white hover:bg-slate-50 shadow-sm">
-            <Save className="w-4 h-4 text-slate-400" /> Save Draft
-          </button>
-        </div>
+      {/* Primary Actions Form Footer */}
+      <div className="flex gap-3 border-t border-gray-200 bg-gray-50 p-3">
+        <button
+          type="button"
+          onClick={onMoveToDoctor}
+          disabled={!selectedPatient || isSubmitting}
+          className="flex flex-1 items-center justify-center gap-2 rounded bg-black px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Send className="h-4 w-4" />
+          Move to Doctor
+        </button>
+        <button
+          type="button"
+          className="rounded border border-gray-300 bg-white px-4 py-2 text-xs font-bold uppercase text-gray-700 transition hover:bg-gray-50"
+        >
+          Save Draft
+        </button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PendingFulfillmentList from '../components/pharmacist/PendingFulfillmentList';
 import AllergyBanner from '../components/pharmacist/AllergyBanner';
 import MedicationDispensation from '../components/pharmacist/MedicationDispensation';
+import Header from '../components/Header';
 
 import { Search, Bell, Radio, User } from 'lucide-react';
 
@@ -90,19 +91,9 @@ function PharmacistDash() {
       
       {/* Dynamic Top Search & Alert Action Rail */}
       <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6">
-        <div className="relative w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-          <input 
-            type="text" 
-            placeholder="Search patients..." 
-            className="w-full bg-gray-100 text-xs pl-9 pr-4 py-2 rounded border-none outline-none focus:ring-1 focus:ring-teal-600 transition-all text-left"
-          />
-        </div>
-        <div className="flex items-center gap-4 text-gray-600">
-          <button className="hover:text-black transition-colors relative"><Bell className="w-4 h-4" /></button>
-          <button className="hover:text-black transition-colors"><Radio className="w-4 h-4" /></button>
-          <button className="hover:text-black transition-colors"><User className="w-4 h-4" /></button>
-        </div>
+        <Header />
+
+    
       </div>
 
       {/* Main Core View Area Frame splits */}

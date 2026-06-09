@@ -4,7 +4,7 @@ import { History, CheckCircle } from 'lucide-react';
 
 function ClinicalHistoryTimeline({ history, activeMeds }) {
   return (
-    <div className="space-y-4 h-full text-left">
+    <div className="space-y-3 h-full text-left">
       
       {/* Dynamic Patient History Card */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-left flex flex-col">

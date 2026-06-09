@@ -1,32 +1,28 @@
-// components/nurse/StationLogs.tsx
+// components/nurse/StationLogs.jsx
 import React from 'react';
-import { History } from 'lucide-react';
+import { Clock3 } from 'lucide-react';
 
-const logs = [
-  { time: '09:12 AM', text: 'Patient Santos, C. moved to Dr. Aris [Room 4]', color: 'bg-emerald-500' },
-  { time: '09:05 AM', text: 'Triage alert: Critical vitals for Marcus, E.', color: 'bg-red-500' },
-  { time: '08:58 AM', text: 'Patient Lee, K. discharged by Dr. Aris', color: 'bg-blue-500' },
-];
-
-export default function StationLogs() {
+export default function StationLogs({ logs }) {
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-          <History className="w-4 h-4 text-slate-400" /> Station Logs
-        </h4>
+    <div className="shrink-0 rounded border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Station Logs</h4>
+        <Clock3 className="h-3.5 w-3.5 text-gray-400" />
       </div>
-      <div className="space-y-3">
-        {logs.map((log, index) => (
-          <div key={index} className="flex items-start gap-3 text-xs">
-            <span className="font-bold text-slate-500 shrink-0 mt-0.5">{log.time}:</span>
-            <div className="flex items-center gap-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${log.color} shrink-0`} />
-              <p className="text-slate-700 font-medium">{log.text}</p>
-            </div>
-          </div>
+      <ul className="space-y-1.5 text-[11px] leading-tight text-gray-600">
+        {logs.map((log) => (
+          <li key={log.id} className="flex gap-2">
+            <span
+              className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                log.tone === 'danger' ? 'bg-rose-500' : log.tone === 'success' ? 'bg-teal-600' : 'bg-sky-500'
+              }`}
+            />
+            <span>
+              <span className="font-mono font-bold text-gray-400">{log.time}:</span> {log.text}
+            </span>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

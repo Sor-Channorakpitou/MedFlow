@@ -6,6 +6,7 @@ import ClinicalHistoryTimeline from "../components/doctor/ClinicalHistoryTimelin
 import SoapNotesForm from "../components/doctor/SoapNotesForm";
 import SymptomsAndActions from "../components/doctor/SymptomsAndActions";
 import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry";
+import Header from '../components/Header';
 
 import { Search, Bell, HelpCircle } from "lucide-react";
 
@@ -230,7 +231,7 @@ function DoctorDash() {
         </div>
 
         {/* COLUMN 2: RIGHT PANEL (Master Workstation Data Desk) */}
-        <div className="lg:col-span-7 flex flex-col space-y-4">
+        <div className="lg:col-span-7 flex flex-col space-y-2">
           <div className="bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
             <SoapNotesForm data={soapNotes} onChange={handleSoapChange} />
           </div>
