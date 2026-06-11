@@ -1,39 +1,44 @@
 import React from 'react';
 import { Users, Activity, ShieldAlert, Timer } from 'lucide-react';
 
-function AnalyticsMetrics() {
+function AnalyticsMetrics({ liveStats = {} }) {
+  // Use fallback values to prevent undefined errors on initial load
   const metrics = [
     {
       label: 'Total Patients',
-      value: '12,482',
-      change: '+4.2%',
+      value: liveStats.totalPatients || 0,
+      change: 'Live Tracked',
       isPositive: true,
       icon: <Users className="w-5 h-5 text-gray-500" />,
       bgIcon: 'bg-gray-50',
+      textColor: 'text-gray-500'
     },
     {
-      label: 'Daily Visits',
-      value: '342',
-      change: '+12%',
-      isPositive: true,
-      icon: <Activity className="w-5 h-5 text-emerald-600" />,
-      bgIcon: 'bg-emerald-50',
+      label: 'Triage Backlog',
+      value: liveStats.triageBacklog || 0,
+      change: (liveStats.triageBacklog || 0) > 5 ? 'High Load' : 'Manageable',
+      isPositive: (liveStats.triageBacklog || 0) <= 5,
+      icon: <Timer className={`w-5 h-5 ${(liveStats.triageBacklog || 0) > 5 ? 'text-amber-600' : 'text-emerald-600'}`} />,
+      bgIcon: (liveStats.triageBacklog || 0) > 5 ? 'bg-amber-50' : 'bg-emerald-50',
+      textColor: (liveStats.triageBacklog || 0) > 5 ? 'text-amber-600' : 'text-emerald-600'
     },
     {
-      label: 'Active Staff',
-      value: '86',
-      change: 'Active',
+      label: 'Active Consults',
+      value: liveStats.activeConsultations || 0,
+      change: 'In Progress',
       isPositive: true,
-      icon: <Users className="w-5 h-5 text-teal-600" />,
+      icon: <Activity className="w-5 h-5 text-teal-600" />,
       bgIcon: 'bg-teal-50',
+      textColor: 'text-teal-600'
     },
     {
-      label: 'Avg. Queue Time',
-      value: '18 min',
-      change: 'High Load',
-      isPositive: false,
-      icon: <Timer className="w-5 h-5 text-rose-600" />,
-      bgIcon: 'bg-rose-50',
+      label: 'Critical Alerts',
+      value: liveStats.criticalAlerts || 0,
+      change: (liveStats.criticalAlerts || 0) > 0 ? 'Action Required' : 'All Clear',
+      isPositive: (liveStats.criticalAlerts || 0) === 0,
+      icon: <ShieldAlert className={`w-5 h-5 ${(liveStats.criticalAlerts || 0) > 0 ? 'text-rose-600' : 'text-gray-400'}`} />,
+      bgIcon: (liveStats.criticalAlerts || 0) > 0 ? 'bg-rose-50' : 'bg-gray-50',
+      textColor: (liveStats.criticalAlerts || 0) > 0 ? 'text-rose-600' : 'text-gray-400'
     },
   ];
 
@@ -52,9 +57,7 @@ function AnalyticsMetrics() {
           </div>
           
           <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-            <span className={`text-xs font-bold mt-2 ${
-              m.change === 'High Load' ? 'text-rose-600' : m.change === 'Active' ? 'text-teal-600' : 'text-emerald-600'
-            }`}>
+            <span className={`text-xs font-bold mt-2 ${m.textColor}`}>
               {m.change}
             </span>
           </div>

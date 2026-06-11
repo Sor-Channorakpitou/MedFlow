@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/Setting.jsx
+import React, { useState, useEffect } from "react";
 import SettingTabs from "../components/settings/SettingTabs";
 import ProfileForm from "../components/settings/ProfileForm";
 import ProfileSummary from "../components/settings/ProfileSummary";
@@ -6,33 +7,55 @@ import NotificationSettings from "../components/settings/NotificationSettings";
 import AboutMedFlow from "../components/settings/AboutMedFlow";
 
 import { Save } from "lucide-react";
+import { useWorkflow } from "../context/WorkflowContext"; // Import pipeline engine link
 
 function Setting() {
-  // Controlled tab string state: 'Profile' | 'Notifications' | 'AboutMedFlow'
+  const { currentUser } = useWorkflow(); // Gather current logged in profile dataset
+  
   const [activeTab, setActiveTab] = useState("Profile");
 
   // State 1: Client Editable Input Data States (Profile Tab)
   const [formData, setFormData] = useState({
-    fullName: "Dr. Sarah Chen",
-    email: "s.chen@medflow-clinical.com",
-    phone: "+1 (555) 942-0348",
-    dob: "1982-05-14",
-    staffId: "MF-CH-000921",
-    department: "Medical Leadership",
+    fullName: "",
+    email: "",
+    phone: "",
+    dob: "",
+    staffId: "",
+    department: "",
   });
 
   // State 2: System Controlled Account Metadata (Profile Side-Card)
-  const [profileMetadata] = useState({
-    name: "Dr. Sarah Chen",
-    title: "Chief Medical Officer",
+  const [profileMetadata, setProfileMetadata] = useState({
+    name: "",
+    title: "",
     status: "ACTIVE",
-    lastLogin: "Oct 24, 08:14 AM",
-    location: "Central Campus - Admin Wing",
-    metrics: {
-      patientReviewsToday: 14,
-      approvalsPending: 3,
-    },
+    lastLogin: "",
+    location: "",
+    metrics: { patientReviewsToday: 0, approvalsPending: 0 },
   });
+
+  // Whenever the active worker identity changes in the context, re-populate the inputs dynamically
+  useEffect(() => {
+    if (currentUser) {
+      setFormData({
+        fullName: currentUser.fullName,
+        email: currentUser.email,
+        phone: currentUser.phone,
+        dob: currentUser.dob,
+        staffId: currentUser.staffId,
+        department: currentUser.department,
+      });
+
+      setProfileMetadata({
+        name: currentUser.fullName,
+        title: currentUser.title,
+        status: currentUser.status,
+        lastLogin: currentUser.lastLogin,
+        location: currentUser.location,
+        metrics: currentUser.metrics,
+      });
+    }
+  }, [currentUser]);
 
   // State 3: Notification Toggles Configuration Matrix (Notifications Tab)
   const [notifications, setNotifications] = useState({
@@ -48,13 +71,11 @@ function Setting() {
     },
   });
 
-  // Handler for text inputs inside ProfileForm
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handler for toggle triggers inside NotificationSettings
   const handleNotificationToggle = (section, eventType, channel) => {
     setNotifications((prev) => ({
       ...prev,
@@ -68,21 +89,20 @@ function Setting() {
     }));
   };
 
-  // Centralized submission handler structured for RESTful endpoint operations
   const handleSaveChanges = (e) => {
     e.preventDefault();
     if (activeTab === "Profile") {
-      console.log("PATCH /api/v1/user/profile payload:", formData);
-      alert("Profile Settings Saved!");
+      console.log(`PATCH /api/v1/staff/${formData.staffId}/profile payload:`, formData);
+      alert(`Profile configuration changes updated for ${formData.fullName}!`);
     } else if (activeTab === "Notifications") {
-      console.log("PUT /api/v1/user/notifications payload:", notifications);
-      alert("Notification Settings Saved!");
+      console.log(`PUT /api/v1/staff/${formData.staffId}/notifications payload:`, notifications);
+      alert("Notification rules updated successfully!");
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6">
-      {/* Dynamic Header Frame Area matching layout view specs */}
+      {/* Dynamic Header Frame Area */}
       <div className="flex justify-between items-center border-b border-gray-200 pb-5">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
@@ -91,16 +111,12 @@ function Setting() {
             {activeTab === "AboutMedFlow" && "System Information"}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            {activeTab === "Profile" &&
-              "Manage your professional administrative clinical profile."}
-            {activeTab === "Notifications" &&
-              "Configure how and when you receive clinical and system alerts."}
-            {activeTab === "AboutMedFlow" &&
-              "System runtime diagnostics and legal documentation compliance profiles."}
+            {activeTab === "Profile" && `Manage your professional administrative clinical profile as a ${profileMetadata.title}.`}
+            {activeTab === "Notifications" && "Configure how and when you receive clinical and system alerts."}
+            {activeTab === "AboutMedFlow" && "System runtime diagnostics and legal documentation compliance profiles."}
           </p>
         </div>
 
-        {/* Conditional rendering for header action buttons */}
         {activeTab !== "AboutMedFlow" && (
           <button
             onClick={handleSaveChanges}
@@ -112,12 +128,8 @@ function Setting() {
         )}
       </div>
 
-      {/* Navigation Tab Switching Rail Component */}
       <SettingTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Conditional Core Body View Routing */}
-
-      {/* 1. Profile Workspace Wrapper View */}
       {activeTab === "Profile" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -133,15 +145,14 @@ function Setting() {
         </div>
       )}
 
-      {/* 2. Notification Toggle Matrix Control View */}
       {activeTab === "Notifications" && (
         <NotificationSettings
           config={notifications}
           onToggle={handleNotificationToggle}
+          role={profileMetadata.title} // Optional: pass down if child elements alter layouts base on role
         />
       )}
 
-      {/* 3. Static Diagnostic Informational About Grid View */}
       {activeTab === "AboutMedFlow" && <AboutMedFlow />}
     </div>
   );

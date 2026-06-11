@@ -44,7 +44,7 @@ function SymptomsAndActions({ symptoms, onToggle }) {
         <div className="space-y-2">
           {diagnosticActions.map((act) => (
             <div key={act.id} className="border border-gray-200 rounded-lg p-2.5 flex justify-between items-center bg-white shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:border-gray-300 transition-all">
-              <span className="text-xs font-medium text-gray-700">📋 {act.text}</span>
+              <span className="text-xs font-medium text-gray-700"> {act.text}</span>
               <button className="text-[10px] font-black text-teal-700 tracking-wider hover:text-teal-900 uppercase">
                 ADD
               </button>

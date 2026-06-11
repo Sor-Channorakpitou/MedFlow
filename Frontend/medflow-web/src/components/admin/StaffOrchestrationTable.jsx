@@ -1,54 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Filter, MoreVertical } from 'lucide-react';
 
-function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
-  const personnel = [
-    {
-      name: 'Dr. Sarah Chen',
-      email: 'sarah.c@medflow.com',
-      avatar: 'SC',
-      role: 'Senior Resident',
-      dept: 'Cardiology',
-      load: '4 Patients',
-      loadCount: 4,
-      status: 'Active',
-    },
-    {
-      name: 'Dr. Sarah Chen',
-      email: 'sarah.c@medflow.com',
-      avatar: 'SC',
-      role: 'Senior Resident',
-      dept: 'Cardiology',
-      load: '4 Patients',
-      loadCount: 4,
-      status: 'Active',
-    },
-    {
-      name: 'Mark Bennet',
-      email: 'm.bennet@medflow.com',
-      avatar: 'MB',
-      role: 'Lead Nurse',
-      dept: 'Emergency',
-      load: '1 Patient',
-      loadCount: 1,
-      status: 'Active',
-    },
-    {
-      name: 'Elena Petrova',
-      email: 'e.petrova@medflow.com',
-      avatar: 'EP',
-      role: 'Physician Assistant',
-      dept: 'General Ward',
-      load: 'Unassigned',
-      loadCount: 0,
-      status: 'Inactive',
-    },
-  ];
+function StaffOrchestrationTable({ selectedDept, onDeptChange, appointments = [] }) {
+  // Calculate how many patients are currently waiting for doctors
+  const activeConsultLoad = appointments.filter(a => a.workflow_step === 'AWAITING_CONSULTATION').length;
+
+  const personnel = useMemo(() => {
+    // If you add a 'staff' array to your context later, you would map over it here.
+    // For now, we update the static staff list's workload dynamically based on the queue.
+    const baseStaff = [
+      { name: 'Dr. Sarah Chen', email: 'sarah.c@medflow.com', avatar: 'SC', role: 'Senior Resident', dept: 'Cardiology', status: 'Active' },
+      { name: 'Dr. Aris Vance', email: 'aris.v@medflow.com', avatar: 'AV', role: 'Attending Physician', dept: 'Emergency', status: 'Active' },
+      { name: 'Elena Petrova', email: 'e.petrova@medflow.com', avatar: 'EP', role: 'Physician Assistant', dept: 'General Ward', status: 'Inactive' },
+    ];
+
+    return baseStaff.map((staff, index) => {
+      // Distribute the current load to active doctors as a demonstration of dynamic binding
+      const currentLoad = staff.status === 'Active' ? (index === 0 ? Math.ceil(activeConsultLoad / 2) : Math.floor(activeConsultLoad / 2)) : 0;
+      
+      return {
+        ...staff,
+        loadCount: currentLoad,
+        load: currentLoad === 1 ? '1 Patient' : currentLoad > 1 ? `${currentLoad} Patients` : 'Unassigned'
+      };
+    }).filter(staff => selectedDept === 'All Departments' || staff.dept === selectedDept);
+  }, [appointments, selectedDept]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      
-      {/* Table Title and Filtering Control Bars */}
       <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-gray-50">
         <h3 className="text-sm font-bold text-gray-900">Staff Orchestration</h3>
         
@@ -72,7 +51,6 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
         </div>
       </div>
 
-      {/* Main Core Document Grid Layout Table Frame */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead>
@@ -87,7 +65,6 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
           <tbody className="divide-y divide-gray-100 text-xs">
             {personnel.map((staff, idx) => (
               <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                {/* Identity profile cell */}
                 <td className="px-6 py-4 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-md bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-[11px] border border-indigo-100 shadow-sm">
                     {staff.avatar}
@@ -98,20 +75,18 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
                   </div>
                 </td>
 
-                {/* Role specifications */}
                 <td className="px-6 py-4">
                   <span className="font-semibold text-gray-800 block">{staff.role}</span>
                   <span className="text-[11px] text-gray-400 block mt-0.5">{staff.dept}</span>
                 </td>
 
-                {/* Workloads capacity cell metrics */}
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-1.5">
                     {staff.loadCount > 0 ? (
                       <>
                         <div className="flex -space-x-1">
-                          <div className="w-4 h-4 rounded-full bg-teal-600 text-[8px] font-bold text-white flex items-center justify-center border border-white">JS</div>
-                          <div className="w-4 h-4 rounded-full bg-blue-500 text-[8px] font-bold text-white flex items-center justify-center border border-white">MK</div>
+                          <div className="w-4 h-4 rounded-full bg-teal-600 text-[8px] font-bold text-white flex items-center justify-center border border-white">P1</div>
+                          {staff.loadCount > 1 && <div className="w-4 h-4 rounded-full bg-blue-500 text-[8px] font-bold text-white flex items-center justify-center border border-white">P2</div>}
                           {staff.loadCount > 2 && (
                             <div className="w-4 h-4 rounded-full bg-gray-200 text-[7px] font-bold text-gray-600 flex items-center justify-center border border-white">+{staff.loadCount - 2}</div>
                           )}
@@ -124,7 +99,6 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
                   </div>
                 </td>
 
-                {/* Account Status Switch Controls toggle indicators */}
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <button
@@ -138,7 +112,6 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
                   </div>
                 </td>
 
-                {/* Context trigger controls row settings */}
                 <td className="px-6 py-4 text-right">
                   <button className="border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-md transition-all shadow-sm">
                     Manage
@@ -149,18 +122,11 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange }) {
           </tbody>
         </table>
       </div>
-
-      {/* Pagination control rails matching layout system requirements */}
+      
+      {/* Pagination Footer */}
       <div className="px-6 py-3 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3 text-[11px] font-medium text-gray-400">
-        <span>Showing 3 of 86 clinical staff members</span>
-        <div className="flex items-center gap-1">
-          <button className="px-2.5 py-1 border border-gray-200 rounded bg-white text-gray-400 font-semibold cursor-not-allowed">Previous</button>
-          <button className="px-2.5 py-1 border border-teal-600 bg-teal-600 text-white font-bold rounded shadow-sm">1</button>
-          <button className="px-2.5 py-1 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded shadow-sm transition-all">2</button>
-          <button className="px-2.5 py-1 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 rounded font-semibold shadow-sm transition-all">Next</button>
-        </div>
+        <span>Showing {personnel.length} clinical staff members</span>
       </div>
-
     </div>
   );
 }

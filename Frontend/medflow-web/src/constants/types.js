@@ -7,7 +7,7 @@
  * @property {string} email
  * @property {string} phone
  * @property {string} DOB
- * @property {string} role_id
+ * @property {string} role_id 
  * @property {string} created_at
  */
 
@@ -42,7 +42,8 @@
  * @property {number|string} user_id - The staff handling the case
  * @property {string} appointment_date
  * @property {string} reason
- * @property {'pending' | 'completed' | 'cancelled'} status
+* @property {'pending' | 'completed' | 'cancelled'} status
+ * @property {'WAITING' | 'AWAITING_TRIAGE' | 'AWAITING_CONSULTATION' | 'AWAITING_PHARMACY' | 'AWAITING_CHECKOUT'} workflow_step
  * @property {string} created_at
  */ 
 

@@ -1,30 +1,66 @@
 // components/receptionist/ReceptionSidePanel.jsx
 import React from 'react';
-import { UserPlus, CalendarDays, Flame, ShieldAlert } from 'lucide-react';
+import { 
+  UserPlus, 
+  CalendarDays, 
+  Flame, 
+  ShieldAlert, 
+  Activity, 
+  TrendingUp, 
+  AlertCircle 
+} from 'lucide-react';
+import { useWorkflow } from '../../context/WorkflowContext';
 
 export default function ReceptionSidePanel({ setSubView, stats }) {
+  // Pull the emergency injector from your central brain if it exists
+  const { triggerEmergencyAdmission } = useWorkflow();
+
+  const handleEmergency = () => {
+    if (triggerEmergencyAdmission) {
+      triggerEmergencyAdmission();
+      alert("Emergency Admission walk-in bypass injected directly into clinical triage!");
+      setSubView('list'); // Take them to the list to see system updates
+    } else {
+      alert("Emergency Admission clicked! (In production, this injects an ESI-1 critical status patient directly into the triage queue).");
+    }
+  };
+
   return (
     <div className="w-60 flex flex-col gap-4 shrink-0">
       {/* Quick Actions Component Block */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-1 text-left">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h4>
+        
         <button 
           onClick={() => setSubView('register')}
           className="w-full flex items-center justify-center gap-2 bg-teal-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition hover:bg-teal-800 shadow-sm"
         >
           <UserPlus className="w-4 h-4" /> ADD NEW PATIENT
         </button>
-        <button className="w-full flex items-center justify-center gap-2 border border-teal-600 text-teal-700 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-teal-50">
+
+        <button 
+          onClick={() => {
+            setSubView('list');
+            alert("To schedule an appointment, select an available open time slot from the active manifest grid.");
+          }}
+          className="w-full flex items-center justify-center gap-2 border border-teal-600 text-teal-700 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-teal-50"
+        >
           <CalendarDays className="w-4 h-4" /> SCHEDULE APPOINTMENT
         </button>
-        <button className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-slate-50">
-          <Flame className="w-4 h-4 text-rose-500" /> EMERGENCY ADMISSION
+
+        <button 
+          onClick={handleEmergency}
+          className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-rose-50/50 hover:border-rose-200 group"
+        >
+          <Flame className="w-4 h-4 text-rose-500 group-hover:animate-bounce" /> EMERGENCY ADMISSION
         </button>
       </div>
 
       {/* Financial Operations Metrics Layer */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-left">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Billing Summary</h4>
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3 flex items-center gap-1.5">
+          <TrendingUp className="w-3.5 h-3.5 text-slate-400" /> Billing Summary
+        </h4>
         <div className="space-y-3 text-xs">
           <div className="flex justify-between items-center">
             <span className="text-slate-500 font-medium">Pending Invoices</span>
@@ -60,14 +96,14 @@ export default function ReceptionSidePanel({ setSubView, stats }) {
       {/* Department Clinic Status Monitoring Panel */}
       <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 shadow-sm text-left">
         <div className="flex items-center gap-2 text-cyan-800 mb-2">
-          <ShieldAlert className="w-4 h-4" />
+          <ShieldAlert className="w-4 h-4 text-cyan-700" />
           <h4 className="text-xs font-bold uppercase tracking-wider">Clinic Status</h4>
         </div>
         <p className="text-xs text-cyan-900/80 leading-relaxed font-medium">
           All departments operational. General surgery wing experiencing minor delays (approx. 20 mins).
         </p>
         <div className="mt-3 flex items-center gap-1.5 text-[10px] font-black text-cyan-700 tracking-wide uppercase">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
           Live Updates Active
         </div>
       </div>

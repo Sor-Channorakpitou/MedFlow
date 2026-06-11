@@ -9,9 +9,6 @@ export default function AppointmentsTable({ appointments = [], onCheckIn }) {
         <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Today's Appointment List</h3>
         <div className="flex gap-2">
           <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50">
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Filter
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50">
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>

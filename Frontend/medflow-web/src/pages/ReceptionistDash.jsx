@@ -1,138 +1,132 @@
-// pages/ReceptionistDash.jsx
-import React, { useState } from "react";
-import Header from "../components/Header";
-import MetricCard from "../components/nurse/MetricCard"; // Reusing your clean base metric design
-import AppointmentsTable from "../components/receptionist/AppointmentsTable";
-import ReceptionSidePanel from "../components/receptionist/ReceptionSidePanel";
-import NewPatientRegistration from "../components/receptionist/NewPatientRegistration";
-import PatientCheckout from "../components/receptionist/PatientCheckout";
+// src/pages/ReceptionistDash.jsx
+import React, { useState, useMemo } from 'react';
+import AppointmentsTable from '../components/receptionist/AppointmentsTable';
+import NewPatientRegistration from '../components/receptionist/NewPatientRegistration';
+import PatientCheckout from '../components/receptionist/PatientCheckout';
+import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
+import Header from '../components/Header';
 
-import { Users, TimerReset, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { useWorkflow } from '../context/WorkflowContext';
 
-const mockAppointments = [
-  {
-    time: "09:15 AM",
-    patientName: "Benjamin Carter",
-    patientId: "#MF-9821",
-    type: "Cardiology Follow-up",
-    doctor: "Dr. Aris Thorne",
-    status: "WAITING",
-  },
-  {
-    time: "09:30 AM",
-    patientName: "Sarah Jenkins",
-    patientId: "#MF-1022",
-    type: "General Checkup",
-    doctor: "Dr. Emily Vance",
-    status: "WAITING",
-  },
-  {
-    time: "10:00 AM",
-    patientName: "Marcus Thorne",
-    patientId: "#MF-4412",
-    type: "Lab Diagnostics",
-    doctor: "Dr. Aris Thorne",
-    status: "WAITING",
-  },
-  {
-    time: "10:15 AM",
-    patientName: "Elena Rodriguez",
-    patientId: "#MF-5561",
-    type: "Consultation",
-    doctor: "Dr. Sarah Smith",
-    status: "WAITING",
-  },
-];
+function ReceptionistDash() {
+  const { 
+    appointments = [], 
+    patients = [], 
+    users = [],
+    checkInPatient,
+    finalizePatientCheckout
+  } = useWorkflow();
 
-const mockStats = {
-  pendingInvoices: 14,
-  collectionsToday: "$4,280.00",
-  transactions: [
-    { name: "David Wilson", type: "Co-pay Payment", amount: "$125.00" },
-    { name: "Maria Garcia", type: "Lab Diagnostics", amount: "$450.00" },
-  ],
-};
-
-export default function ReceptionistDash() {
-  const [subView, setSubView] = useState("home"); // States: 'home' | 'register' | 'checkout'
-  const [searchQuery, setSearchQuery] = useState("");
+  const [subView, setSubView] = useState('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCheckoutAppId, setSelectedCheckoutAppId] = useState('');
 
   const currentUser = {
-    name: "Reception Team",
-    role: "Front Desk Operations",
-    initials: "RD",
+    name: "Dina", // Set matching your environment session profile
+    role: "Lead Patient Access Coordinator",
+    initials: "DM",
+  };
+
+// ==========================================================================
+  // DATA JOIN & SORTING ENGINE: Only Show Awaiting Check-In ('WAITING')
+  // ==========================================================================
+  const activeAppointmentsList = useMemo(() => {
+    const getPriorityWeight = (reasonText) => {
+      if (!reasonText) return 1;
+      const normalized = reasonText.toLowerCase();
+      if (normalized.includes('emergency') || normalized.includes('acute') || normalized.includes('pain')) {
+        return 2; // High Priority
+      }
+      return 1; // Standard FCFS
+    };
+
+    return appointments
+      // FIX: Remove 'AWAITING_TRIAGE' from here so they drop off this list upon check-in!
+      .filter(app => app.workflow_step === 'WAITING')
+      .map(app => {
+        const patient = patients.find(p => p.patient_id === app.patient_id);
+        const staff = users.find(u => u.user_id === app.user_id);
+
+        return {
+          id: app.appointment_id,
+          patientId: app.patient_id,
+          patientName: patient ? patient.full_name : "Unknown Patient",
+          rawTime: new Date(app.appointment_date),
+          time: new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: app.reason || "General Consultation",
+          doctor: staff ? staff.name : "Assigned Staff",
+          status: "Scheduled", // Since they're filtered to 'WAITING', they are all scheduled baselines
+          priorityWeight: getPriorityWeight(app.reason)
+        };
+      })
+      // THE QUEUE ENGINE: Highest Priority jumps ahead. If equal, oldest timestamp takes precedence (FCFS)
+      .sort((a, b) => {
+        if (b.priorityWeight !== a.priorityWeight) {
+          return b.priorityWeight - a.priorityWeight;
+        }
+        return a.rawTime - b.rawTime;
+      })
+      .filter(apt => apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [appointments, patients, users, searchQuery]);
+
+  const financialMetrics = useMemo(() => {
+    const checkoutQueue = appointments.filter(app => app.workflow_step === 'AWAITING_CHECKOUT');
+    return {
+      pendingInvoices: checkoutQueue.length,
+      collectionsToday: `$${(appointments.filter(app => app.workflow_step === 'AWAITING_CHECKOUT').length * 150).toFixed(2)}`,
+      transactions: [
+        { name: "Sarah Jenkins", type: "Co-pay Card", amount: "150.00" }
+      ]
+    };
+  }, [appointments]);
+
+  const handleCheckInAction = (apt) => {
+    if (apt.status === "Checked In") return;
+    checkInPatient(apt.id);
   };
 
   return (
-    <div className="flex h-screen  max-w-[1600px] bg-slate-100 text-slate-900 font-sans">
-      {/* Global Sidebar layout sync */}
+    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
+      <Header
+        user={currentUser}
+        searchPlaceholder="Search arriving patient manifests..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
-      <div className="flex flex-col flex-1 min-w-0 h-full">
-        {/* Unified Global Dynamic Header */}
-        <Header
-          user={currentUser}
-          searchPlaceholder="Search patients, records..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          hasNotifications={true}
-        />
+      <div className="flex-1 flex p-6 gap-5 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          
+          {/* Subview Nav Switcher Links */}
+          <div className="flex items-center gap-3 mb-4 text-xs font-semibold">
+            <button onClick={() => setSubView('list')} className={`pb-1 border-b-2 transition-all ${subView === 'list' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
+              Arrival Manifest
+            </button>
+            <button onClick={() => setSubView('register')} className={`pb-1 border-b-2 transition-all ${subView === 'register' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
+              New Registration Form
+            </button>
+            <button onClick={() => setSubView('checkout')} className={`pb-1 border-b-2 transition-all ${subView === 'checkout' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
+              Billing Cashier Ledger
+            </button>
+          </div>
 
-        {/* View Routing Conditional Core Block */}
-        <main className="flex min-h-0 flex-1 flex-col gap-2 py-1 ">
-          {subView === "home" && (
-            <>
-              {/* Dynamic Analytics Counters Section */}
-              <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <MetricCard
-                  label="Total Patients Today"
-                  value="48"
-                  icon={Users}
-                  iconBgColor="bg-blue-50"
-                  iconColor="text-blue-600"
-                />
-                <MetricCard
-                  label="Waiting Patients"
-                  value="12"
-                  icon={TimerReset}
-                  iconBgColor="bg-amber-50"
-                  iconColor="text-amber-600"
-                />
-                <MetricCard
-                  label="Checked-In"
-                  value="24"
-                  icon={ClipboardCheck}
-                  iconBgColor="bg-teal-50"
-                  iconColor="text-teal-600"
-                />
-                <MetricCard
-                  label="Completed Visits"
-                  value="12"
-                  icon={CheckCircle2}
-                  iconBgColor="bg-emerald-50"
-                  iconColor="text-emerald-600"
-                />
-              </section>
-
-              {/* Operations Grid Area splits */}
-              <section className="flex flex-1 min-h-0 gap-3 items-stretch">
-                <AppointmentsTable
-                  appointments={mockAppointments}
-                  onCheckIn={(p) =>
-                    console.log("Checking in patient:", p.patientName)
-                  }
-                />
-                <ReceptionSidePanel setSubView={setSubView} stats={mockStats} />
-              </section>
-            </>
-          )}
-
-          {subView === "register" && (
-            <NewPatientRegistration onCancel={() => setSubView("home")} />
-          )}
-
-          {subView === "checkout" && <PatientCheckout />}
-        </main>
+          <div className="flex-1 flex min-h-0">
+            {subView === 'list' && (
+              <AppointmentsTable appointments={activeAppointmentsList} onCheckIn={handleCheckInAction} />
+            )}
+            {subView === 'register' && (
+              <NewPatientRegistration onCompleteRegistration={() => setSubView('list')} />
+            )}
+            {subView === 'checkout' && (
+              <PatientCheckout selectedAppId={selectedCheckoutAppId} onSelectAppId={setSelectedCheckoutAppId} onFinalizeCheckout={finalizePatientCheckout} />
+            )}
+          </div>
+        </div>
+{/* 
+        <ReceptionSidePanel setSubView={setSubView} stats={financialMetrics} /> */}
       </div>
     </div>
   );
 }
+
+export default ReceptionistDash;
