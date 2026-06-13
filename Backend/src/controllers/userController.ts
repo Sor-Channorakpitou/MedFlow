@@ -1,0 +1,101 @@
+import type { NextFunction, Request, Response } from "express";
+import { findAllUsers, findUserById, insertUser, modifyUser, removeUser } from "../services/userService.js";
+
+export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const users = await findAllUsers();
+
+        if(users.length === 0) return res.status(404).json({ message: "No users found" });
+    
+        return res.json(users);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id  = Number(req.params.id);
+
+        if (isNaN(id)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        const user = await findUserById(id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        return res.json(user);
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email, name, phone, dateOfBirth, password, roleId } = req.body;
+
+        const data = {
+            email,
+            name,
+            phone, 
+            dateOfBirth,
+            password,
+            roleId
+        };
+
+        const user = await insertUser(data);
+
+        return res.status(201).json(user);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email, name, phone, dateOfBirth, password, roleId } = req.body;
+        const id = Number(req.params.id);
+
+        const data = {
+            email,
+            name,
+            phone, 
+            dateOfBirth,
+            password,
+            roleId
+        };
+
+        const user = await modifyUser(id,data);
+
+        return res.status(200).json(user);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id);
+
+        const deleted = await removeUser(id);
+
+        if (!deleted) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        return res.status(200).json({
+            message: "User deleted successfully"
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+

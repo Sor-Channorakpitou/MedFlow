@@ -3,7 +3,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoute from "./routes/authRoute.js";
 import userRoute from "./routes/userRoute.js";
-import patientRoute from "./routes/patientRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -18,7 +17,6 @@ app.use(express.json());
 
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
-app.use('/api/patients', patientRoute);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
