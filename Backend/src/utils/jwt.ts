@@ -9,7 +9,7 @@ if (!ACCESS_SECRET || !REFRESH_SECRET) {
 
 type AccessPayload = {
     id: number;
-    roleid: number;
+    role: string;
 };
 
 type RefreshPayload = {
