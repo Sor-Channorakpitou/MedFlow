@@ -1,39 +1,36 @@
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { loginUser, refreshAccessToken, logoutUser } from "../services/authService";
 import { refreshTokenCookieOptions } from "../utils/cookieOptions";
 
-export const login = async (req: Request, res: Response) => {
-    try { const { email, password } = req.body;
+export const login = async (req: Request, res: Response, next: NextFunction) => {
+    try { 
+        const { email, password } = req.body;
 
-    if(!email || !password) {
-        return res.status(400).json({ message: "Missing fields"});
-    }
-
-    const { accessToken, refreshToken, user } = await loginUser(email, password);
-
-    // Store refresh token in httpOnly cookie
-    res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
-
-    return res.json({
-        accessToken, 
-        user: {
-            id: user.id,
-            email: user.email,
-            roleid: user.roleId,
-        },
-
-    });
-
-    } catch (error: any) {
-        if(error.message === "INVALID_CREDENTIALS") {
-            return res.status(401).json({ message: "Invalid credentials" });
+        if(!email || !password) {
+            return res.status(400).json({ message: "Missing fields"});
         }
-        
-        return res.status(500).json({ message: "Internal server error" });
+
+        const { accessToken, refreshToken, user } = await loginUser(email.toLocaleLowerCase().trim(), password);
+
+        // Store refresh token in httpOnly cookie
+        res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
+
+        return res.json({
+            accessToken, 
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role.name,
+            },
+
+        });
+
+    } catch (error) {
+        next(error);
     }
 };
 
-export const refresh = async (req: Request, res: Response) => {
+export const refresh = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const refreshToken = req.cookies.refreshToken;
 
@@ -44,12 +41,12 @@ export const refresh = async (req: Request, res: Response) => {
         const accessToken = await refreshAccessToken(refreshToken);
         return res.json({ accessToken });
 
-    } catch (error: any) {
-        return res.status(403).json({ message: "Invalid refresh token" });
+    } catch (error) {
+        next(error);
     }
 };
 
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const refreshToken = req.cookies.refreshToken;
 
@@ -62,7 +59,7 @@ export const logout = async (req: Request, res: Response) => {
         res.clearCookie("refreshToken", refreshTokenCookieOptions);
 
         return res.json({ message: "Logged out" });
-    } catch {
-        return res.status(500).json({ message: "Internal server error" });
+    } catch (error) {
+        next(error);
     }
 };

@@ -1,12 +1,11 @@
 import bcrypt from "bcrypt";
-import prisma from "../lib/prisma";
+import prisma from "../lib/prisma.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
+import { findUserEmail } from "./userService.js";
 
 export const loginUser = async (email: string, password: string) => {
     // Find user in DB
-    const user = await prisma.user.findUnique({
-        where: { email }
-    }); 
+    const user = await findUserEmail(email);
 
     if (!user) {
         throw new Error("INVALID_CREDENTIALS");
@@ -22,7 +21,7 @@ export const loginUser = async (email: string, password: string) => {
     // Provide access token & refresh token
     const accessToken = generateAccessToken({
         id: user.id,
-        roleid: user.roleId,
+        role: user.role.name,
     });
 
     const refreshToken = generateRefreshToken({
@@ -66,7 +65,8 @@ export const refreshAccessToken = async (refreshToken: string) => {
 
     // Check user still exists
     const user = await prisma.user.findUnique({
-        where: { id: payload.id }
+        where: { id: payload.id },
+        include: { role: true }
     });
 
     if(!user) {
@@ -76,7 +76,7 @@ export const refreshAccessToken = async (refreshToken: string) => {
     // Issued new access token 
     const newAccessToken = generateAccessToken({
         id: user.id,
-        roleid: user.roleId,
+        role: user.role.name,
     });
 
     return newAccessToken;
