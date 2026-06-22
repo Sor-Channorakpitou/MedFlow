@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import { findAllUsers, findUserById, insertUser, modifyUser, removeUser } from "../services/userService.js";
+import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser } from "../services/userService.js";
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -92,6 +92,36 @@ export const deleteUserById = async (req: Request, res: Response, next: NextFunc
         });
 
     } catch (error) {
+        next(error);
+    }
+};
+
+export const deactivateUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id);
+
+        const user = await deactivateUser(id);
+
+        if(!user) return res.status(404).json({ message: "User not found" });
+
+        return res.status(200).json({ message: "User deactivate successfully" });  
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const adminResetPasswordUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id);
+        const { newPassword } = req.body;
+
+
+        const user = await adminResetUserPassword(id, newPassword);
+
+        if(!user) return res.status(404).json({ message: "User not found" });
+
+        return res.status(200).json({ message: "Password reset successfully" });  
+    }catch (error) {
         next(error);
     }
 };
