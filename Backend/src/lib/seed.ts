@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 
+
 const prisma = new PrismaClient();
 
 export const seed = async () => {

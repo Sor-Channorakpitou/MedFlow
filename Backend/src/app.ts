@@ -9,7 +9,7 @@ import { errorHandler } from "./middlewares/errorMiddleware.js";
 // Danica 
 
 import triageRouter from "./routes/triageRoute.js";
-
+import consultationRouter from "./routes/consultationRoutes.js"
 
 const app = express();
 
@@ -25,6 +25,7 @@ app.use('/api/users', userRoute);
 
 
 app.use('/api/triage', triageRouter);
+app.use("/api/consultation", consultationRouter)
 
 app.use(notFoundHandler);
 app.use(errorHandler);
