@@ -10,6 +10,7 @@ import { errorHandler } from "./middlewares/errorMiddleware.js";
 
 import triageRouter from "./routes/triageRoute.js";
 import consultationRouter from "./routes/consultationRoutes.js"
+import prescriptionRouter from "./routes/prescriptionRoutes.js"
 
 const app = express();
 
@@ -25,7 +26,8 @@ app.use('/api/users', userRoute);
 
 
 app.use('/api/triage', triageRouter);
-app.use("/api/consultation", consultationRouter)
+app.use("/api/consultation", consultationRouter);
+app.use("/api/prescriptions", prescriptionRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
