@@ -1,6 +1,7 @@
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
 import { toUserDTO } from "../utils/dataFormat.js";
+import { validatePassword } from "../utils/passwordValidator.js";
 
 type CreateUserInput = {
     email: string;
@@ -52,24 +53,6 @@ export const insertUser = async ( data: CreateUserInput ) => {
         throw new Error("EMAIL_ALREADY_EXISTS");
     }
 
-     const validatePassword = (password: string) => {
-        if (password.length < 8) {
-            throw new Error("PASSWORD_TOO_SHORT");
-        }
-
-        if (!/[A-Z]/.test(password)) {
-            throw new Error("PASSWORD_MISSING_UPPERCASE");
-        }
-
-        if (!/[a-z]/.test(password)) {
-            throw new Error("PASSWORD_MISSING_LOWERCASE");
-        }
-
-        if (!/\d/.test(password)) {
-            throw new Error("PASSWORD_MISSING_NUMBER");
-        }
-    };
-
     validatePassword(data.password);
 
     const  passwordHash = await bcrypt.hash(data.password, 10);
@@ -101,7 +84,6 @@ export const modifyUser = async (
             email?: string,
             name?: string, 
             phone?: string,
-            password?: string, 
             dateOfBirth?: string,
             roleId?: number
     } 
@@ -135,29 +117,6 @@ export const modifyUser = async (
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth;
     if (data.roleId !== undefined) updateData.roleId = data.roleId;
-
-    const validatePassword = (password: string) => {
-        if (password.length < 8) {
-            throw new Error("PASSWORD_TOO_SHORT");
-        }
-
-        if (!/[A-Z]/.test(password)) {
-            throw new Error("PASSWORD_MISSING_UPPERCASE");
-        }
-
-        if (!/[a-z]/.test(password)) {
-            throw new Error("PASSWORD_MISSING_LOWERCASE");
-        }
-
-        if (!/\d/.test(password)) {
-            throw new Error("PASSWORD_MISSING_NUMBER");
-        }
-    };
-
-    if (data.password) {
-        validatePassword(data.password);
-        updateData.passwordHash = await bcrypt.hash(data.password, 10);
-    }
 
     return toUserDTO(
         await prisma.user.update({
@@ -242,4 +201,31 @@ export const findUserEmail = async (email: string) => {
 
     if(!user) throw new Error("NOT_FOUND");
     return user;
+}
+
+export const adminResetUserPassword = async (userId: number, newPassword: string) => { 
+    if(!userId) throw new Error("MISSING_REQUIRED_FIELDS");
+
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if(!user) throw new Error("NOT_FOUND");
+
+    validatePassword(newPassword);
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash,
+            mustChangePassword: true
+        }
+    });
+
+    return {
+        message: "PASSWORD_RESET_SUCCESS",
+        newPassword
+    }
+
 }

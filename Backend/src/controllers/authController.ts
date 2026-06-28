@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
-import { loginUser, refreshAccessToken, logoutUser } from "../services/authService";
+import { loginUser, refreshAccessToken, logoutUser, changePasswordUser } from "../services/authService.js";
 import { refreshTokenCookieOptions } from "../utils/cookieOptions";
+import { verifyAccessToken } from "../utils/jwt.js";
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
     try { 
@@ -63,3 +64,37 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
         next(error);
     }
 };
+
+export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: "NO_TOKEN" });
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        if (!token) {
+            return res.status(401).json({ message: "INVALID_TOKEN" });
+        }
+
+        const payload = verifyAccessToken(token);
+
+        const userId = payload.id;
+
+        const { currentPassword, newPassword } = req.body;
+
+        if (!userId || !currentPassword || !newPassword) {
+            return res.status(400).json({
+                message: "Missing required fields"
+            });
+        }
+
+        await changePasswordUser(userId, currentPassword, newPassword);
+
+        return res.json({ message: "Password changed successfully" });
+    } catch (error) {
+        next(error);
+    }
+}

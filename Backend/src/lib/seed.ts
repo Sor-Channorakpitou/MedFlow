@@ -13,12 +13,12 @@ export const seed = async () => {
 
     // Find or create role 
     let adminRole = await prisma.role.findFirst({
-        where: { name: "admin" }
+        where: { name: "ADMIN" }
     });
 
     if (!adminRole) {
         adminRole = await prisma.role.create({
-            data: { name: "admin" }
+            data: { name: "ADMIN" }
         });
     }
 
