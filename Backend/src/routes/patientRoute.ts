@@ -5,10 +5,10 @@ import { createPatient, deletePatientById, getAllPatients, getPatientById, updat
 
 const router = express.Router();
 
-router.get('/', authenticate, authorize(["admin", "receptionist", "nurse", "doctor"]), getAllPatients);
-router.get('/:id', authenticate, authorize(["admin", "receptionist", "nurse", "doctor"]), getPatientById);
-router.post('/', authenticate, authorize(["receptionist"]), createPatient);
-router.patch('/:id', authenticate, authorize(["receptionist"]), updatePatientById);
-router.delete('/:id', authenticate, authorize(["receptionist"]), deletePatientById);
+router.get('/', authenticate, authorize(["ADMIN", "RECEPTIONIST", "NURSE", "DOCTOR"]), getAllPatients);
+router.get('/:id', authenticate, authorize(["ADMIN", "RECEPTIONIST", "NURSE", "DOCTOR"]), getPatientById);
+router.post('/', authenticate, authorize(["RECEPTIONIST"]), createPatient);
+router.patch('/:id', authenticate, authorize(["RECEPTIONIST"]), updatePatientById);
+router.delete('/:id', authenticate, authorize(["RECEPTIONIST"]), deletePatientById);
 
 export default router;
