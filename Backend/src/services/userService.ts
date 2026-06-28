@@ -1,5 +1,7 @@
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
+import cloudinary from "../lib/cloudinary.js";
+import { uploadToCloudinary } from "../utils/cloudinaryUpload.js";
 import { toUserDTO } from "../utils/dataFormat.js";
 import { validatePassword } from "../utils/passwordValidator.js";
 
@@ -229,3 +231,33 @@ export const adminResetUserPassword = async (userId: number, newPassword: string
     }
 
 }
+
+export const uploadProfileImageService = async (userId: number, file: Express.Multer.File) => {
+    if (!userId || !file) {
+        throw new Error("MISSING_REQUIRED_FIELDS");
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) {
+        throw new Error("NOT_FOUND");
+    }
+
+    const uploadResult = await uploadToCloudinary(file);
+
+    if (user.profilePublicId) {
+        await cloudinary.uploader.destroy(user.profilePublicId);
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            profileImage: uploadResult.secure_url,
+            profilePublicId: uploadResult.public_id
+        }
+    });
+
+    return updatedUser;
+};

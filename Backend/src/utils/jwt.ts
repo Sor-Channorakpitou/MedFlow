@@ -7,12 +7,12 @@ if (!ACCESS_SECRET || !REFRESH_SECRET) {
     throw new Error("Missing JWT secrets in environment variables");
 }
 
-type AccessPayload = {
+export type AccessPayload = {
     id: number;
     role: string;
 };
 
-type RefreshPayload = {
+export type RefreshPayload = {
     id: number;
 };
 
