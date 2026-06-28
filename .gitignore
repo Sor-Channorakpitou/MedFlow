@@ -2,5 +2,5 @@
 .env
 .vscode/
 node_modules/
-generated
 Backend/dist
+Backend/generated
