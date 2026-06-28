@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
     "dev": "nodemon",
-    "built": "tsc",
     "start": "node dist/server.js",
-    "seed": "node ./src/lib/seed.ts"
+    "seed": "node dist/lib/seed.js",
+    "seed:dev": "ts-node src/lib/seed.ts",
   },
   "keywords": [],
   "author": "",
