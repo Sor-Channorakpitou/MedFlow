@@ -34,7 +34,7 @@ export const loginUser = async (email: string, password: string) => {
         data: {
             token: refreshToken,
             userId: user.id,
-            expiredAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
     });
 

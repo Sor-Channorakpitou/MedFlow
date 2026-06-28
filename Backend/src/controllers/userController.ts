@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { uploadProfileImageService } from "../services/userService.js";
 import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser } from "../services/userService.js";
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -122,6 +123,31 @@ export const adminResetPasswordUserById = async (req: Request, res: Response, ne
 
         return res.status(200).json({ message: "Password reset successfully" });  
     }catch (error) {
+        next(error);
+    }
+};
+
+export const uploadProfileImage = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+        const file = req.file;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        if (!file) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        const result = await uploadProfileImageService(userId, file);
+
+        return res.status(200).json({
+            message: "PROFILE_IMAGE_UPDATED",
+            data: result
+        });
+
+    } catch (error) {
         next(error);
     }
 };
