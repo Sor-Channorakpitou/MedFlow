@@ -6,6 +6,12 @@ import userRoute from "./routes/userRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
+// Danica 
+
+import triageRouter from "./routes/triageRoute.js";
+import consultationRouter from "./routes/consultationRoutes.js"
+import prescriptionRouter from "./routes/prescriptionRoutes.js"
+
 const app = express();
 
 app.use(cors({
@@ -16,10 +22,16 @@ app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/auth', authRoute);
-app.use('/api/users', userRoute);
+app.use('/api/users', userRoute); 
+
+
+app.use('/api/triage', triageRouter);
+app.use("/api/consultation", consultationRouter);
+app.use("/api/prescriptions", prescriptionRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
+
 
 
 export default app;

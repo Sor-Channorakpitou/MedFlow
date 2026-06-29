@@ -1,7 +1,6 @@
-import React from 'react';
 import { CheckCircle } from 'lucide-react';
 
-function MedicationDispensation({ patient, onToggleMed, onFinalize }) {
+function MedicationDispensation({ patient, onFinalize }) {
   const filledCount = patient.medications.filter(m => m.isDispensed).length;
   const allFilled = filledCount === patient.medications.length;
 
@@ -54,7 +53,7 @@ function MedicationDispensation({ patient, onToggleMed, onFinalize }) {
               </div>
             </div>
 
-            {/* Verification Checklist Switch Widget */}
+            {/* Verification Checklist Switch Widget
             <div className="flex flex-col items-center gap-1.5 ml-2">
               <button
                 onClick={() => onToggleMed(med.id)}
@@ -67,7 +66,7 @@ function MedicationDispensation({ patient, onToggleMed, onFinalize }) {
               <span className="text-[9px] uppercase font-bold tracking-wider text-gray-400">
                 {med.isDispensed ? 'DISPENSED' : 'MARK DISPENSED'}
               </span>
-            </div>
+            </div> */}
           </div>
         ))}
       </div>

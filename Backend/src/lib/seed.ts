@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { configDotenv } from "dotenv";
 
-configDotenv();
+
 const prisma = new PrismaClient();
 
 export const seed = async () => {
