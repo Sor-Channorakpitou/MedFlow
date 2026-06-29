@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import authRoute from "./routes/authRoute.js";
 import appointmentRoute from "./routes/appointmentRoute.js";
 import userRoute from "./routes/userRoute.js";
+import medicalRecordRoute from "./routes/medicalRecordRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute); 
 app.use('/api/appointments', appointmentRoute);
+app.use('/api/medicalRecords', medicalRecordRoute);
 
 
 app.use('/api/triage', triageRouter);
