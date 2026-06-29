@@ -23,6 +23,9 @@ model User {
   isActive       Boolean         @default(true)
   createdAt      DateTime        @default(now())
   roleId         Int
+  profileImage     String?
+  profilePublicId  String?
+
   appointments   Appointment[]
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
@@ -40,6 +43,7 @@ model Patient {
   address        String?
   dateOfBirth    DateTime
   createdAt      DateTime        @default(now())
+
   appointments   Appointment[]
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
@@ -56,6 +60,7 @@ model Appointment {
   endTime         DateTime
   userId          Int
   patientId       Int
+
   patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   invoice         Invoice?
@@ -72,6 +77,7 @@ model Medication {
   description             String
   stockQuantity           Int
   unitPrice               Decimal                  @db.Decimal(10, 2)
+
   prescriptionMedications PrescriptionMedication[]
 }
 
@@ -84,6 +90,7 @@ model Invoice {
   appointmentId Int           @unique
   patientId     Int
   userId        Int
+
   appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -99,6 +106,7 @@ model MedicalRecord {
   userId        Int
   patientId     Int
   appointmentId Int           @unique
+
   appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -115,6 +123,7 @@ model Prescription {
   userId                  Int
   patientId               Int
   medicalRecordId         Int                      @unique
+
   medicalRecord           MedicalRecord            @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
   patient                 Patient                  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -131,6 +140,7 @@ model PrescriptionMedication {
   dosage         Int
   frequency      Int
   duration       String
+
   medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Cascade)
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
 
@@ -148,6 +158,7 @@ model Triage {
   createdAt     DateTime     @default(now())
   appointmentId Int          @unique
   userId        Int
+  
   appointment   Appointment  @relation(fields: [appointmentId], references: [id])
   user          User         @relation(fields: [userId], references: [id])
 }

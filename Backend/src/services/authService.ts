@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import prisma from "../lib/prisma.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import { findUserEmail } from "./userService.js";
+import { validatePassword } from "../utils/passwordValidator.js";
 
 export const loginUser = async (email: string, password: string) => {
     // Find user in DB
@@ -93,3 +94,28 @@ export const logoutUser = async (refreshToken: string) => {
 
     return true;
 };
+
+export const changePasswordUser = async (userId: number, curPassword: string, newPassword: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) {
+        throw new Error("NOT_FOUND");
+    }
+
+    const isMatch = await bcrypt.compare(curPassword, user.passwordHash);
+
+    if (!isMatch) {
+        throw new Error("INVALID_PASSWORD");
+    }
+
+    validatePassword(newPassword);
+
+    const passwordHash = await bcrypt.hash(newPassword,10);
+
+    await prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash }
+    });
+}
