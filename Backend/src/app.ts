@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger";
 import authRoute from "./routes/authRoute.js";
 import appointmentRoute from "./routes/appointmentRoute.js";
 import userRoute from "./routes/userRoute.js";
@@ -23,6 +25,8 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute); 
