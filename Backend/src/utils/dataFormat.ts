@@ -1,4 +1,4 @@
-export const formatDateOnly = (date: Date | string | null | undefined) => {
+export const formatDateOnly = (date?: Date | string | null | undefined) => {
     if (!date) return null;
 
     return new Date(date).toISOString().split("T")[0];
@@ -35,7 +35,7 @@ export const toMedicalRecordDTO = (record: any) => ({
   id: record.id,
   notes: record.notes,
   diagnosis: record.diagnosis,
-  visitDate: record.visitDate,
+  visitDate: formatDateOnly(record.visitDate),
   userId: record.userId,
   patientId: record.patientId,
   appointmentId: record.appointmentId,
@@ -44,7 +44,7 @@ export const toMedicalRecordDTO = (record: any) => ({
 export const toInvoiceDTO = (invoice: any) => ({
   id: invoice.id,
   paymentMethod: invoice.paymentMethod,
-  issuedDate: invoice.issuedDate,
+  issuedDate: formatDateOnly(invoice.issuedDate),
   paymentStatus: invoice.paymentStatus,
   totalAmount: Number(invoice.totalAmount),
 
