@@ -1,6 +1,6 @@
 // src/constants/roles.js
 export const ROLES = {
-  RECEPTION: 'reception',
+  RECEPTION: 'receptionist',
   NURSE: 'nurse',
   DOCTOR: 'doctor',
   PHARMACIST: 'pharmacist',
