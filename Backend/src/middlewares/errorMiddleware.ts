@@ -31,13 +31,6 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         });
     }
 
-    if(err.message === "MISSING_REQUIRED_FIELDS") {
-        return res.status(400).json({ 
-            success: false,
-            message: "Missing required fields" 
-        });
-    }
-
     if (err.message === "EMAIL_ALREADY_EXISTS") {
         return res.status(409).json({
             success: false,
@@ -49,6 +42,13 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         return res.status(409).json({
             success: false,
             message: "Email already exists"
+        });
+    }
+
+    if (err.message === "INVOICE_ALREADY_EXISTS") {
+        return res.status(409).json({
+            success: false,
+            message: "Invoice already exists"
         });
     }
 
@@ -84,6 +84,41 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         return res.status(400).json({
             success: false,
             message: "Email is already existed"
+        });
+    }
+
+    if (err.message === "INVALID_TIME_RANGE") {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid time range"
+        });
+    }
+
+    if (err.message === "APPOINTMENT_TIME_CONFLICT") {
+        return res.status(409).json({
+            success: false,
+            message: "Appointment time conflict"
+        });
+    }
+
+    if (err.message === "ALREADY_CANCELLED") {
+        return res.status(400).json({
+            success: false,
+            message: "Already cancelled"
+        });
+    }
+
+    if (err.message === "MEDICAL_RECORD_ALREADY_EXISTS") {
+        return res.status(409).json({
+            success: false,
+            message: "Medical record already exists"
+        });
+    }
+
+    if (err.message === "ALREADY_PAID") {
+        return res.status(409).json({
+            success: false,
+            message: "Invoice already marked as paid"
         });
     }
 

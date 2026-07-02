@@ -1,5 +1,6 @@
 // src/context/WorkflowContext.jsx
 import React, { createContext, useState, useContext, useMemo} from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { 
   MOCK_USERS, 
   MOCK_STAFF_PROFILES,
@@ -22,11 +23,14 @@ export const WorkflowProvider = ({ children }) => {
   const [prescriptionItems, setPrescriptionItems] = useState(MOCK_PRESCRIPTION_ITEMS);
   const [workloads, setWorkloads] = useState(MOCK_WORKLOADS);
 
-  const [currentUserRole, setCurrentUserRole] = useState("DOCTOR"); // Try switching to "NURSE", "RECEPTIONIST", "PHARMACIST"
+  const { user } = useAuth();
+  const role = user?.role;
 
   const currentUser = useMemo(() => {
-    return MOCK_STAFF_PROFILES?.[currentUserRole] || MOCK_STAFF_PROFILES["DOCTOR"];
-  }, [currentUserRole]);
+    if (!user) return null;
+
+    return MOCK_STAFF_PROFILES[user.role] || null;
+  }, [user]);
   
 
   // recept check in
@@ -161,8 +165,7 @@ export const WorkflowProvider = ({ children }) => {
   return (
     <WorkflowContext.Provider value={{
       users: MOCK_USERS,
-      currentUser,          // <--- Expose to layout dashboard screens
-      setCurrentUserRole,  
+      currentUser,          
       patients,
       appointments,
       triages,

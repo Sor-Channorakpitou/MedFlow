@@ -1,8 +1,13 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger";
 import authRoute from "./routes/authRoute.js";
+import appointmentRoute from "./routes/appointmentRoute.js";
 import userRoute from "./routes/userRoute.js";
+import medicalRecordRoute from "./routes/medicalRecordRoute.js";
+import billingRoute from "./routes/billingRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -20,9 +25,14 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute); 
+app.use('/api/appointments', appointmentRoute);
+app.use('/api/medicalRecords', medicalRecordRoute);
+app.use('/api/billings', billingRoute);
 
 
 app.use('/api/triage', triageRouter);

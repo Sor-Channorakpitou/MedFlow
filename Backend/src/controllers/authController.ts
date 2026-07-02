@@ -97,4 +97,19 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
     } catch (error) {
         next(error);
     }
-}
+};
+
+export const me = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        res.json({
+            success: true,
+            message: "User retrieved successfully.",
+            user: {
+                id: req.user?.id,
+                role: req.user?.role
+            }
+        });
+    } catch(error) {
+        next(error);
+    }
+};
