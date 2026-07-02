@@ -57,53 +57,36 @@ export const createTriageRecord = async (data: CreateTriageInput) => {
 };
 
 // 2. Get Live Sorted Queue (GET /queue)
-export const getSortedQueue = async () => {
-  return await prisma.triage.findMany({
+export const getSortedQueue = async (pagination?: { take?: number; skip?: number }) => {
+  return await prisma.appointment.findMany({
     where: {
-      appointment: { status: "CONFIRMED" }
+      status: "PENDING",
+      triage: null
     },
     include: {
-      appointment: { include: { patient: true } }
+      patient: true,
+      triage: true
     },
-    orderBy: [
-      { urgencyLevel: "desc" }, // CRITICAL -> HIGH -> MEDIUM -> LOW[cite: 1]
-      { createdAt: "asc" }       // First-come, first-served within the same tier[cite: 1]
-    ]
-  });
-};
-
-// 3. Get All Triage History Records (GET /)
-export const getAllTriageRecords = async () => {
-  return await prisma.triage.findMany({
-    include: {
-      appointment: { include: { patient: true } }
+    orderBy: {
+      createdAt: 'asc'
     },
-    orderBy: { createdAt: "desc" }
+    ...(pagination?.take !== undefined ? { take: pagination.take } : {}),
+    ...(pagination?.skip !== undefined ? { skip: pagination.skip } : {})
   });
 };
 
 
-// 4. Filter Queue by Urgency (FIXED: Checks both PENDING and CONFIRMED active states)
-export const getFilteredQueueByUrgency = async (urgency: TriageStatus) => {
-  return await prisma.triage.findMany({
-    where: {
-      urgencyLevel: urgency,
-      appointment: {
-        status: { in: ["PENDING", "CONFIRMED"] } // Ensures it doesn't show COMPLETED appointments
-      }
-    },
-    include: {
-      appointment: { include: { patient: true } }
-    },
-    orderBy: { createdAt: "asc" }
-  });
-};
 
 
-// 5. Get Triage by Appointment ID (GET /appointment/:id)
+// 3. Get Triage by Appointment ID (GET /appointment/:id)
 export const getTriageByAppointmentId = async (appointmentId: number) => {
-  return await prisma.triage.findUnique({
-    where: { appointmentId },
+
+  // if (!appointmentId || isNaN(appointmentId)) {
+  //   throw new Error("Invalid or missing appointment sequence identifier");
+  // }
+
+  return await prisma.triage.findFirst({
+    where: { appointmentId: Number(appointmentId) },
     include: {
       appointment: { include: { patient: true } }
     }
@@ -111,7 +94,7 @@ export const getTriageByAppointmentId = async (appointmentId: number) => {
 };
 
 
-// 6. Update Vitals or Urgency (FIXED: Pure type casting safety)
+// 4. Update Vitals or Urgency (FIXED: Pure type casting safety)
 export const updateTriageRecord = async (appointmentId: number, updates: UpdateTriageInput) => {
   const existing = await prisma.triage.findUnique({ where: { appointmentId } });
   if (!existing) throw new Error("TRIAGE_RECORD_NOT_FOUND");
@@ -131,16 +114,3 @@ export const updateTriageRecord = async (appointmentId: number, updates: UpdateT
   });
 };
 
-// 7. Delete Triage Record & Revert Status (DELETE /:id)
-export const deleteTriageRecord = async (appointmentId: number) => {
-  const existing = await prisma.triage.findUnique({ where: { appointmentId } });
-  if (!existing) throw new Error("TRIAGE_RECORD_NOT_FOUND");
-
-  return await prisma.$transaction(async (tx) => {
-    await tx.triage.delete({ where: { appointmentId } });
-    await tx.appointment.update({
-      where: { id: appointmentId },
-      data: { status: "PENDING" }
-    });
-  });
-};

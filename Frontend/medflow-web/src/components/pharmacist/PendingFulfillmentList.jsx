@@ -32,7 +32,7 @@ function PendingFulfillmentList({ patients, selectedId, onSelect }) {
                     <span>{p.medCount} Medications</span>
                   </div>
                   <p className="text-[11px] text-gray-400 mt-1">⚕️ {p.prescriber}</p>
-                  <p className="text-[11px] text-gray-400">🕒 Prescribed: {p.prescribedTime}</p>
+                  <p className="text-[11px] text-gray-400"> Prescribed: {p.prescribedTime}</p>
                 </div>
 
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${

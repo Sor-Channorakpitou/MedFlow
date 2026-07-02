@@ -14,8 +14,7 @@ const getAuthHeaders = () => {
   };
 };
 
-
-export const getWaitingQueue = async () => {
+export const getAwaitingPatients = async () => {
   const response = await axios.get(`${API_BASE_URL}/queue`, getAuthHeaders());
   return response.data;
 };
@@ -30,14 +29,7 @@ export const submitConsultation = async (consultationData) => {
   return response.data;
 };
 
-
-export const updateConsultation = async (updatedData) => {
-  const response = await axios.put(`${API_BASE_URL}`, updatedData, getAuthHeaders());
-  return response.data;
-};
-
-
-export const getDailyTreatmentLog = async () => {
-  const response = await axios.get(`${API_BASE_URL}/today`, getAuthHeaders());
-  return response.data;
+export const updateConsultation = async ( appointmentId, updatedData ) => { 
+  const response = await axios.put( `${API_BASE_URL}/${appointmentId}`, updatedData, getAuthHeaders() );
+  return response.data; 
 };

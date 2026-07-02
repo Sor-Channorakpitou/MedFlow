@@ -1,8 +1,7 @@
-// src/components/doctor/ClinicalHistoryTimeline.jsx
-import React from 'react';
+
 import { History, CheckCircle } from 'lucide-react';
 
-function ClinicalHistoryTimeline({ history, activeMeds }) {
+function ClinicalHistoryTimeline({ history = [], activeMeds = [] }) {
   return (
     <div className="space-y-3 h-full text-left">
       
@@ -17,24 +16,28 @@ function ClinicalHistoryTimeline({ history, activeMeds }) {
           <p className="text-xs text-gray-400 py-4 italic font-medium">No previous electronic health events logged.</p>
         ) : (
           <div className="space-y-5 relative before:absolute before:bottom-2 before:top-2 before:left-1.5 before:w-0.5 before:bg-gray-100 pl-5 max-h-[35vh] overflow-y-auto">
-            {history.map((ev, i) => (
-              <div key={i} className="relative space-y-1 text-left">
-                <div className="absolute -left-[18.5px] top-1 w-2 h-2 rounded-full bg-gray-400 border border-white" />
-                <span className="text-[10px] text-gray-400 font-bold block">{ev.date}</span>
-                <h4 className="text-xs font-bold text-gray-900 block">{ev.title}</h4>
-                <p className="text-[11px] text-gray-500 leading-relaxed block">{ev.desc}</p>
-                
-                {ev.tags && (
-                  <div className="flex gap-1 pt-1">
-                    {ev.tags.map((t, idx) => (
-                      <span key={idx} className={`text-[8px] font-black px-1 py-0.5 rounded tracking-wide ${
-                        t === 'CHRONIC' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'
-                      }`}>{t}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {history.map((ev, i) => {
+              // Safe stable calculation identifier string key
+              const uniqueEventKey = ev.id || ev.consultationId || `history-node-${i}`;
+              return (
+                <div key={uniqueEventKey} className="relative space-y-1 text-left">
+                  <div className="absolute -left-[18.5px] top-1 w-2 h-2 rounded-full bg-gray-400 border border-white" />
+                  <span className="text-[10px] text-gray-400 font-bold block">{ev.date}</span>
+                  <h4 className="text-xs font-bold text-gray-900 block">{ev.title || ev.diagnosis}</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed block">{ev.desc || ev.clinicalNotes}</p>
+                  
+                  {ev.tags && (
+                    <div className="flex gap-1 pt-1">
+                      {ev.tags.map((t, idx) => (
+                        <span key={`tag-${idx}`} className={`text-[8px] font-black px-1 py-0.5 rounded tracking-wide ${
+                          t === 'CHRONIC' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'
+                        }`}>{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -49,15 +52,25 @@ function ClinicalHistoryTimeline({ history, activeMeds }) {
           <p className="text-xs text-gray-400 py-2 italic font-medium">No active prescription vectors baseline.</p>
         ) : (
           <div className="space-y-2 max-h-[25vh] overflow-y-auto">
-            {activeMeds.map((m) => (
-              <div key={m.id} className="border border-gray-150 rounded-lg p-2.5 flex justify-between items-center bg-white hover:border-gray-300 transition-colors">
-                <div className="text-left">
-                  <h4 className="text-xs font-bold text-gray-800">{m.name}</h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-medium">{m.dosage} | {m.frequency}</p>
+            {activeMeds.map((m, idx) => {
+              // FIX: Generate a safe unique key combination to ensure rendering updates function smoothly
+              const medicationKey = m.id || `med-row-${m.name}-${idx}`;
+              
+              return (
+                <div key={medicationKey} className="border border-gray-150 rounded-lg p-2.5 flex justify-between items-center bg-white hover:border-gray-300 transition-colors">
+                  <div className="text-left">
+                    <h4 className="text-xs font-bold text-gray-800">{m.name}</h4>
+                    {/* FIX: Read instruction, quantity, and refills instead of unpopulated properties */}
+                    <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
+                      {m.instruction || 'As directed'} 
+                      {m.quantity ? ` • Qty: ${m.quantity}` : ''}
+                      {m.refills ? ` • Refills: ${m.refills}` : ''}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-3.5 h-3.5 text-teal-600 shrink-0" />
                 </div>
-                <CheckCircle className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
