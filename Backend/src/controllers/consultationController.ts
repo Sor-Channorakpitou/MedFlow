@@ -2,13 +2,18 @@ import type { Request, Response, NextFunction } from "express";
 import * as consultService from "../services/consultationService.js";
 import { logConsultationSchema, updateConsultationSchema } from "../validations/consultationValidation.js";
 
+
 export const getQueue = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const queue = await consultService.getDoctorWaitingQueue();
-    res.status(200).json({ success: true, count: queue.length, queue });
-  } catch (error) {
-    next(error);
-  }
+    try{
+        const queue = await consultService.getDoctorQueue();
+
+        res.json({
+            success:true,
+            queue
+        });
+    }catch(err){
+        next(err);
+    }
 };
 
 export const getHistory = async (req: Request, res: Response, next: NextFunction) => {
@@ -48,17 +53,6 @@ export const updateExistingConsultation = async (req: Request, res: Response, ne
       validatedData.notes || null
     );
     res.status(200).json({ success: true, message: "Consultation updated successfully", data: result });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getDailyLog = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const doctorId = (req as any).user?.id || 3;
-       console.log("Doctor ID:", doctorId);
-    const logs = await consultService.getDoctorDailyLog(doctorId);
-    res.status(200).json({ success: true, count: logs.length, logs });
   } catch (error) {
     next(error);
   }

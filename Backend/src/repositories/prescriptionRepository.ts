@@ -9,22 +9,33 @@ export const findPendingPrescriptions = async () => {
     include: {
       patient: {
         select: {
+          id: true,
           fullName: true,
-          phone: true
+          phone: true,
+          dateOfBirth: true
         }
       },
+
       user: {
         select: {
           name: true
         }
       },
+
       medicalRecord: {
         select: {
           diagnosis: true,
           notes: true
         }
+      },
+
+      prescriptionMedications: {
+        include: {
+          medication: true
+        }
       }
     },
+
     orderBy: {
       createdAt: "asc"
     }
