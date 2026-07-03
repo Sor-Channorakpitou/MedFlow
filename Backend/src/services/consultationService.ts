@@ -1,7 +1,7 @@
 import * as consultRepo from "../repositories/consultationRepository.js";
 
-export const getDoctorWaitingQueue = async () => {
-  return await consultRepo.findDoctorQueue();
+export const getDoctorQueue = async () => {
+    return consultRepo.findDoctorQueue();
 };
 
 export const getPatientHistory = async (patientId: number) => {
@@ -24,6 +24,3 @@ export const editConsultation = async (
   );
 };
 
-export const getDoctorDailyLog = async (doctorId: number) => {
-  return await consultRepo.findDailyLogByDoctor(doctorId);
-};

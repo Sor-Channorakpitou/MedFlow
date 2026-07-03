@@ -1,25 +1,22 @@
 // src/pages/PharmacistDash.jsx
-import React, { useState, useMemo, useEffect } from 'react';
-import PendingFulfillmentList from '../components/pharmacist/PendingFulfillmentList';
-import AllergyBanner from '../components/pharmacist/AllergyBanner';
-import MedicationDispensation from '../components/pharmacist/MedicationDispensation';
-import Header from '../components/Header';
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import PendingFulfillmentList from "../components/pharmacist/PendingFulfillmentList";
+import AllergyBanner from "../components/pharmacist/AllergyBanner";
+import MedicationDispensation from "../components/pharmacist/MedicationDispensation";
+import Header from "../components/Header";
 
-import { useWorkflow } from "../context/WorkflowContext";
+import {
+  getPendingPrescriptions,
+  dispensePrescription,
+} from "../services/prescriptionAPI";
 
 function PharmacistDash() {
-  // Connect directly to the global pipeline engine
-  const { 
-    appointments = [], 
-    patients = [], 
-    prescriptions = [], 
-    prescriptionItems = [], 
-    dispenseMedications,
-    togglePrescriptionItemCheck // FIX: Pull this cleanly directly from the hook execution scope
-  } = useWorkflow();
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
 
-  const [selectedPatientId, setSelectedPatientId] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const currentUser = {
     name: "Alex Rivera, PharmD",
@@ -28,102 +25,156 @@ function PharmacistDash() {
   };
 
   // ==========================================================================
-  // RELATIONAL DATA JOIN: Assemble queue matching 'AWAITING_PHARMACY'
+  // FETCH ENGINE
   // ==========================================================================
-  const reactiveQueue = useMemo(() => {
-    return appointments
-      .filter((app) => app.workflow_step === "AWAITING_PHARMACY")
-      .map((app) => {
-        const patientInfo = patients.find((p) => p.patient_id === app.patient_id);
-        
-        // Find the master prescription record tied to this appointment
-        const masterPrescription = prescriptions.find((p) => p.appointment_id === app.appointment_id);
+  const loadPharmacyDashboard = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setApiError(null);
 
-        // Filter and map out individual items belonging to this specific prescription header
-        const uiMedications = prescriptionItems
-          .filter((item) => item.prescription_id === masterPrescription?.prescription_id)
-          .map((item) => ({
-            id: item.item_id, // Match the true key structure generated in Context
-            name: item.medication_name,
-            type: item.type || "Prescribed Rx",
-            instruction: item.instruction,
-            qty: item.quantity,
-            refills: item.refills,
-            isDispensed: item.is_dispensed // Bind directly to the reactive global state array flag
-          }));
+      const response = await getPendingPrescriptions();
+
+      if (response && response.prescriptions) {
+        setPrescriptions(response.prescriptions);
+        // Safely set the initial selection immediately upon fetch
+        if (response.prescriptions.length > 0) {
+          setSelectedPrescriptionId(response.prescriptions[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch eager-loaded prescriptions:", err);
+      setApiError(
+        "Database sync failed. Could not pull prescription registries.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPharmacyDashboard();
+  }, [loadPharmacyDashboard]);
+
+  // Transform raw DB schema to pristine UI layout structures
+  const reactiveQueue = useMemo(() => {
+    return prescriptions
+      .map((prescription) => {
+        const patient = prescription.patient || {};
+
+        const uiMedications =
+          prescription.prescriptionMedications?.map((item) => ({
+            id: item.id,
+            name: item.medication?.name || "Unknown Medicine",
+            type: "Prescribed Rx",
+            instruction: `${item.frequency}x daily for ${item.duration}`,
+            qty: item.dosage,
+            refills: item.refills || 0,
+            isDispensed: item.isDispensed || false,
+          })) || [];
 
         return {
-          id: app.appointment_id, // Primary key selection map target
-          prescriptionId: masterPrescription?.prescription_id || '',
-          patientId: app.patient_id,
-          name: patientInfo ? patientInfo.full_name : "Unknown Patient",
-          dob: patientInfo ? new Date(patientInfo.DOB).toLocaleDateString() : "N/A",
+          id: prescription.id,
+          prescriptionId: prescription.id,
+          patientId: patient.id || null,
+          name: patient.fullName || "UNKNOWN PATIENT",
+          dob: patient.dateOfBirth
+            ? new Date(patient.dateOfBirth).toLocaleDateString()
+            : "N/A",
           medCount: uiMedications.length,
-          prescriber: "Attending Physician",
-          prescribedTime: new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          prescriber: prescription.user?.name || "Attending Physician",
+          prescribedTime: prescription.createdAt
+            ? new Date(prescription.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "",
           waitTime: "Ready to Fill",
-          isUrgent: app.urgency_level === 4 || app.urgency_level === "HIGH",
-          allergies: masterPrescription?.allergies || "No Known Drug Allergies (NKDA)",
-          medications: uiMedications
+          allergies:
+            prescription.medicalRecord?.allergies ||
+            "No Known Drug Allergies (NKDA)",
+          medications: uiMedications,
+          diagnosis: prescription.medicalRecord?.diagnosis || "",
+          notes: prescription.medicalRecord?.notes || "",
         };
       })
-      .filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [appointments, patients, prescriptions, prescriptionItems, searchQuery]);
+      .filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+  }, [prescriptions, searchQuery]);
 
-  // Handle auto-selection tracking as patients enter/exit the workflow step
-  useEffect(() => {
-    if (reactiveQueue.length > 0) {
-      // If our current selection isn't in the active queue anymore, reset it to the first item
-      const missingOrUnset = !selectedPatientId || !reactiveQueue.some(p => p.id === selectedPatientId);
-      if (missingOrUnset) {
-        setSelectedPatientId(reactiveQueue[0].id);
-      }
-    } else {
-      setSelectedPatientId('');
-    }
-  }, [reactiveQueue, selectedPatientId]);
+  // Derived Active Prescription (No useEffect loop hazard)
+  const activePrescription = useMemo(() => {
+    if (reactiveQueue.length === 0) return null;
 
-  const activePatient = useMemo(() => {
-    return reactiveQueue.find(p => p.id === selectedPatientId) || null;
-  }, [reactiveQueue, selectedPatientId]);
+    const currentActive = reactiveQueue.find(
+      (p) => p.id === selectedPrescriptionId,
+    );
+    // Fallback safely to the first matched search/queue item if selection gets lost
+    return currentActive || reactiveQueue[0];
+  }, [reactiveQueue, selectedPrescriptionId]);
 
-  // ==========================================================================
-  // DISPENSE ITEM TOGGLE HANDLER
-  // ==========================================================================
   const handleToggleDispense = (medItemId) => {
-    if (!togglePrescriptionItemCheck) {
-      console.error("Context function togglePrescriptionItemCheck is missing!");
-      return;
-    }
-    // Pass the target item ID up to change its checked/dispensed boolean value
-    togglePrescriptionItemCheck(medItemId);
+    setPrescriptions((prevPrescriptions) =>
+      prevPrescriptions.map((rx) => {
+        // Use the fallback-safe activePrescription ID instead of raw state
+        if (
+          activePrescription &&
+          rx.id === activePrescription.id &&
+          rx.prescriptionMedications
+        ) {
+          return {
+            ...rx,
+            prescriptionMedications: rx.prescriptionMedications.map((item) =>
+              item.id === medItemId
+                ? { ...item, isDispensed: !item.isDispensed }
+                : item,
+            ),
+          };
+        }
+        return rx;
+      }),
+    );
   };
 
-  // ==========================================================================
-  // FINALIZE DISCHARGE: Clear patient workflow pipeline target to CHECKOUT
-  // ==========================================================================
-  const handleFinalizeDischarge = () => {
-    if (!activePatient) return;
+  const handleFinalizeDischarge = async () => {
+    if (!activePrescription) return;
 
-    const allChecked = activePatient.medications.every(m => m.isDispensed);
-    if (!allChecked) {
-      alert(`Validation Pending: Please verify and check off all prescriptions before discharge.`);
-      return;
+    try {
+      const targetId = Number(activePrescription.prescriptionId);
+      await dispensePrescription(targetId);
+
+      // Optimistically clean the state
+      setPrescriptions((prev) => {
+        const remaining = prev.filter((rx) => rx.id !== targetId);
+        // Update selection state inline during the action step safely
+        if (remaining.length > 0) {
+          setSelectedPrescriptionId(remaining[0].id);
+        } else {
+          setSelectedPrescriptionId("");
+        }
+        return remaining;
+      });
+    } catch (err) {
+      console.error("Discharge execution error: ", err);
+      alert("Backend execution failed during validation confirmation routine.");
     }
-
-    // Fire state mutation engine forwarding patient on to final invoicing counters
-    if (dispenseMedications) {
-      dispenseMedications(activePatient.id, activePatient.prescriptionId);
-    }
-
-    // Reset selection state clean
-    setSelectedPatientId('');
   };
+
+  if (isLoading)
+    return (
+      <div className="flex h-screen items-center justify-center text-slate-400 font-medium">
+        Loading clinical registries...
+      </div>
+    );
+  if (apiError)
+    return (
+      <div className="flex h-screen items-center justify-center text-rose-500 font-medium">
+        {apiError}
+      </div>
+    );
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden text-left">
-
-      {/* Dynamic Top Search & Alert Action Rail */}
       <Header
         user={currentUser}
         searchPlaceholder="Filter dispensary records..."
@@ -132,36 +183,36 @@ function PharmacistDash() {
         hasNotifications={true}
       />
 
-      {activePatient ? (
-        /* Main Core View Area Frame splits */
+      {activePrescription ? (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 p-6 gap-6 min-h-0 overflow-hidden">
-
-          {/* Master Queue Panel (Left 1 Column) */}
+          {/* Master Queue List Grid Section */}
           <div className="lg:col-span-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
             <PendingFulfillmentList
               patients={reactiveQueue}
-              selectedId={selectedPatientId}
-              onSelect={setSelectedPatientId}
+              selectedId={activePrescription.id} // Keep the UI in sync with derived data
+              onSelect={setSelectedPrescriptionId}
             />
           </div>
 
-          {/* Workspace Operations Panel (Right 2 Columns) */}
+          {/* Interactive Workspace Area Framework */}
           <div className="lg:col-span-2 flex flex-col space-y-4 h-full overflow-y-auto pr-1">
-            <AllergyBanner text={activePatient.allergies} />
+            <AllergyBanner text={activePrescription.allergies} />
 
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <MedicationDispensation
-                patient={activePatient}
-                onToggleMed={handleToggleDispense} // FIX: Pass down our secure local callback proxy handler
+                patient={activePrescription}
+                onToggleMed={handleToggleDispense}
                 onFinalize={handleFinalizeDischarge}
               />
             </div>
           </div>
-
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
-          <p className="text-sm font-medium">All pending prescriptions have been fully compiled and cleared for discharge.</p>
+          <p className="text-sm font-medium">
+            All pending prescriptions have been fully compiled and cleared for
+            discharge.
+          </p>
         </div>
       )}
     </div>
