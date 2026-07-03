@@ -288,7 +288,7 @@ function NurseDash() {
       {/* 1. Header component placeholder updated to match Nurse.png perfectly */}
       <Header
         user={currentUser}
-        searchPlaceholder="Search patient name, ID, or triage level..."
+        searchPlaceholder="Search..."
         searchValue={search}
         onSearchChange={setSearch}
         hasNotifications={true}
