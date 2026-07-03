@@ -163,7 +163,7 @@ function NurseDash() {
     <div className="flex h-screen flex-col  bg-[#f4f6f8] text-left text-gray-900">
       <Header 
         user={currentUser}
-        searchPlaceholder="Filter emergency tracker..."
+        searchPlaceholder="Search..."
         searchValue={search}
         onSearchChange={setSearch}
         hasNotifications={true}
