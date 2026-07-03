@@ -6,7 +6,7 @@ const RoleRoute = ({ allowedRoles }) => {
 
     if(!user) return <Navigate to="/login" replace />
 
-    if(!allowedRoles.includes(user.role)) {
+    if(!allowedRoles.includes(user.role.name)) {
         return <Navigate to="/login" replace />
     }
 

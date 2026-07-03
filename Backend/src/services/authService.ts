@@ -3,6 +3,7 @@ import prisma from "../lib/prisma.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import { findUserEmail } from "./userService.js";
 import { validatePassword } from "../utils/passwordValidator.js";
+import { toUserDTO } from "../utils/dataFormat.js";
 
 export const loginUser = async (email: string, password: string) => {
     // Find user in DB
@@ -23,20 +24,23 @@ export const loginUser = async (email: string, password: string) => {
     const accessToken = generateAccessToken({
         id: user.id,
         role: user.role.name,
+        username: user.name
     });
 
     const refreshToken = generateRefreshToken({
         id: user.id
     });
 
-    // Store refresh token in DB
-    await prisma.refreshToken.create({
-        data: {
-            token: refreshToken,
-            userId: user.id,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        },
-    });
+    await prisma.$transaction([
+        prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
+        prisma.refreshToken.create({
+            data: {
+                token: refreshToken,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+        }),
+    ]);
 
     return { accessToken, refreshToken, user };
 };
@@ -51,7 +55,7 @@ export const refreshAccessToken = async (refreshToken: string) => {
         where: { token: refreshToken }
     });
 
-    if (!storedSession) {
+    if (!storedSession || storedSession.expiresAt < new Date()) {
         throw new Error("INVALID_REFRESH_TOKEN");
     }
 
@@ -78,6 +82,7 @@ export const refreshAccessToken = async (refreshToken: string) => {
     const newAccessToken = generateAccessToken({
         id: user.id,
         role: user.role.name,
+        username: user.name
     });
 
     return newAccessToken;
@@ -118,4 +123,19 @@ export const changePasswordUser = async (userId: number, curPassword: string, ne
         where: { id: userId },
         data: { passwordHash }
     });
-}
+};
+
+export const getMe = async (userId: number) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            role: true
+        }
+    });
+
+    if (!user) {
+        throw new Error("NOT_FOUND");
+    }
+
+    return toUserDTO(user);
+};

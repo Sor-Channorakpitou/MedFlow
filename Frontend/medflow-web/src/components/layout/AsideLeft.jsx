@@ -2,12 +2,15 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SidebarItem from './SidebarItem';
+import { useAuth } from "../../hooks/useAuth";
+import icon from "../../assets/icon.png";
 import { mainNavItems, bottomNavItems } from './sidebarConfig';
 import { ROLE_THEMES } from '../../constants/roles';
 
 const AsideLeft = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // Determine active item based on the current URL path (e.g., "/reception")
   const currentPath = location.pathname;
@@ -15,7 +18,7 @@ const AsideLeft = () => {
   const handleItemClick = (item) => {
     if (item.isAction) {
       // Clear auth tokens here if necessary
-      navigate('/login');
+      navigate('/login', { replace: true });
       return;
     }
     navigate(item.path);
@@ -26,8 +29,8 @@ const AsideLeft = () => {
       <div className="flex flex-col gap-8">
         {/* Brand Identity */}
         <div className="flex items-center gap-3 px-2 pt-2">
-          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl">
-            <span className="mt-[-2px]">+</span>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+            <img src={icon} className='bg-transparent'/>
           </div>
           <div>
             <h1 className="text-base font-bold text-slate-900 leading-tight">MedFlow</h1>
@@ -37,13 +40,16 @@ const AsideLeft = () => {
 
         {/* Dynamic Navigation Links */}
         <nav className="flex flex-col gap-1">
-          {mainNavItems.map((item) => {
+          {
+          mainNavItems
+          .filter(item => item.label.toUpperCase() === user?.role.name)
+          .map((item) => {
             const isActive = currentPath === item.path;
             // Fallback to pharmacist theme if not specified
             const currentTheme = ROLE_THEMES[item.id] || ROLE_THEMES.pharmacist; 
 
             return (
-              <SidebarItem
+              <SidebarItem 
                 key={item.id}
                 label={item.label}
                 icon={item.icon}

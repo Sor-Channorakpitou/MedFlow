@@ -6,10 +6,6 @@ function MainLayout() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // 1. Clear authentication tokens or session data here
-    // localStorage.removeItem('token'); 
-    
-    // 2. Redirect back to login page
     navigate('/login');
   };
 

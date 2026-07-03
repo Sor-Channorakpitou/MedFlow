@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { loginUser, refreshAccessToken, logoutUser, changePasswordUser } from "../services/authService.js";
+import { loginUser, refreshAccessToken, logoutUser, changePasswordUser, getMe } from "../services/authService.js";
 import { refreshTokenCookieOptions } from "../utils/cookieOptions";
 import { verifyAccessToken } from "../utils/jwt.js";
 
@@ -101,15 +101,24 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 
 export const me = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        res.json({
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized"
+            });
+        }
+
+        const user = await getMe(userId);
+
+        return res.json({
             success: true,
-            message: "User retrieved successfully.",
-            user: {
-                id: req.user?.id,
-                role: req.user?.role
-            }
+            message: "User retrieved successfully",
+            user
         });
-    } catch(error) {
+
+    } catch (error) {
         next(error);
     }
 };
