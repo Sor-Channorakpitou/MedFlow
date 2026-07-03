@@ -1,5 +1,4 @@
-// pages/NurseDash.jsx
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,160 +7,286 @@ import {
   Users,
   Minus,
   CircleDot,
-} from 'lucide-react';
+} from "lucide-react";
 
-// Components imports
-import MetricCard from '../components/nurse/MetricCard';
-import LiveQueue from '../components/nurse/LiveQueue';
-import ActiveTriagePanel from '../components/nurse/ActiveTriagePanel';
-import StationLogs from '../components/nurse/StationLogs'; 
-import Header from '../components/Header';
+import MetricCard from "../components/nurse/MetricCard";
+import LiveQueue from "../components/nurse/LiveQueue";
+import ActiveTriagePanel from "../components/nurse/ActiveTriagePanel";
+import StationLogs from "../components/nurse/StationLogs";
+import Header from "../components/Header";
 
-import { useWorkflow } from '../context/WorkflowContext';
+import {
+  getLiveQueue,
+  createTriageRecord,
+  updateTriageRecord,
+} from "../services/triageAPI";
 
+// Modified styling mapping directly over to text/border states
 const URGENCY_META = {
-  4: { label: 'CRITICAL', badge: 'bg-rose-100 text-rose-700 border-rose-300', panel: 'bg-rose-600 text-white', icon: AlertTriangle },
-  3: { label: 'HIGH', badge: 'bg-amber-100 text-amber-700 border-amber-300', panel: 'bg-amber-500 text-white', icon: TriangleAlert },
-  2: { label: 'MEDIUM', badge: 'bg-blue-100 text-blue-700 border-blue-300', panel: 'bg-blue-600 text-white', icon: Minus },
-  1: { label: 'LOW', badge: 'bg-emerald-100 text-emerald-700 border-emerald-300', panel: 'bg-emerald-600 text-white', icon: CircleDot },
+  4: {
+    label: "CRITICAL",
+    badge: "border-rose-200 text-rose-600 bg-rose-50/40",
+    panel: "text-rose-600 border-rose-600",
+    icon: AlertTriangle,
+  },
+  3: {
+    label: "HIGH",
+    badge: "border-amber-200 text-amber-600 bg-amber-50/40",
+    panel: "text-amber-500 border-amber-500",
+    icon: TriangleAlert,
+  },
+  2: {
+    label: "MEDIUM",
+    badge: "border-blue-200 text-blue-600 bg-blue-50/40",
+    panel: "text-blue-600 border-blue-600",
+    icon: Minus,
+  },
+  1: {
+    label: "LOW",
+    badge: "border-emerald-200 text-emerald-600 bg-emerald-50/40",
+    panel: "text-emerald-600 border-emerald-600",
+    icon: CircleDot,
+  },
 };
 
-const logsSeed = [
-  { id: 1, time: '09:12 AM', text: 'Patient Santos, C. moved to Dr. Aris [Room 4]', tone: 'success' },
-  { id: 2, time: '09:05 AM', text: 'Triage alert: Critical vitals logged', tone: 'danger' },
-];
+const REVERSE_URGENCY_MAP = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+};
+const URGENCY_MAP = {
+  1: "LOW",
+  2: "MEDIUM",
+  3: "HIGH",
+  4: "CRITICAL",
+};
 
 function getBpStatus(bpString) {
-  if (!bpString || !bpString.includes('/')) return 'UNKNOWN';
-  const [sys, dia] = bpString.split('/').map(Number);
-  if (!Number.isFinite(sys) || !Number.isFinite(dia)) return 'UNKNOWN';
-  if (sys >= 140 || dia >= 90) return 'HYPERTENSIVE';
-  if (sys >= 120 || dia >= 80) return 'ELEVATED';
-  return 'NORMAL';
+  if (!bpString || !bpString.includes("/")) return "UNKNOWN";
+  const [sys, dia] = bpString.split("/").map(Number);
+  if (!Number.isFinite(sys) || !Number.isFinite(dia)) return "UNKNOWN";
+  if (sys >= 140 || dia >= 90) return "HYPERTENSIVE";
+  if (sys >= 120 || dia >= 80) return "ELEVATED";
+  return "NORMAL";
 }
 
 function NurseDash() {
-  const { appointments, patients, triages, submitNurseTriage } = useWorkflow();
-  
-  const [selectedId, setSelectedId] = useState('');
-  const [urgencyLevel, setUrgencyLevel] = useState(3); // Default to Level 3 (High/Medium boundary)
-  const [search, setSearch] = useState('');
-  const [notes, setNotes] = useState('');
-  const [logs, setLogs] = useState(logsSeed);
+  const [rawQueue, setRawQueue] = useState([]);
+  const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  const [selectedId, setSelectedId] = useState("");
+  const [urgencyLevel, setUrgencyLevel] = useState(3);
+  const [search, setSearch] = useState("");
+  const [notes, setNotes] = useState("");
+  const [logs, setLogs] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form input fields for vitals state management
-  const [bp, setBp] = useState('120/80');
-  const [hr, setHr] = useState('80');
-  const [temp, setTemp] = useState('37.0');
-  const [weight, setWeight] = useState('70');
+  const [bp, setBp] = useState("120/80");
+  const [hr, setHr] = useState("80");
+  const [temp, setTemp] = useState("37.0");
+  const [weight, setWeight] = useState("70");
+  const [spo2, setSpo2] = useState("98");
 
   const currentUser = {
+    id: 1,
     name: "Sarah J.",
     role: "Head of Triage",
-    initials: "SJ"
+    initials: "SJ",
   };
 
-  // ==========================================================================
-  // RELATIONAL DATA JOIN: Extract and format all triage-pending workflows
-  // ==========================================================================
-  const reactiveQueue = useMemo(() => {
-    return appointments
-      .filter(app => app.workflow_step === 'AWAITING_TRIAGE')
-      .map(app => {
-        const patientInfo = patients.find(p => p.patient_id === app.patient_id);
-        
-        // Calculate age mock natively
-        const birthYear = patientInfo?.date_of_birth ? new Date(patientInfo.date_of_birth).getFullYear() : 1990;
-        const currentYear = new Date().getFullYear();
+  const fetchBackendQueue = async () => {
+    try {
+      setIsLoadingQueue(true);
+      const data = await getLiveQueue();
+      if (data?.success) {
+        setRawQueue(data.queue || []);
+        setApiError(null);
+      }
+      console.log(data);
+    } catch (err) {
+      setApiError("Failed to sync live triage queue.");
+    } finally {
+      setIsLoadingQueue(false);
+    }
+  };
 
-        return {
-          id: app.appointment_id, // Map appointment context key
-          patientId: app.patient_id,
-          name: patientInfo ? patientInfo.full_name.toUpperCase() : "UNKNOWN",
-          age: currentYear - birthYear,
-          gender: patientInfo?.gender === "Male" ? "M" : "F",
-          arrival: new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          wait: 'WAITING',
-          urgency: urgencyLevel, 
-          vitals: { bpSys: '120', bpDia: '80', hr: '80', temp: '37.0', spo2: '98' }, // Form fields override this
-          notes: ''
-        };
-      });
-  }, [appointments, patients]);
-
-  // Handle auto-selecting the first item in the incoming data pipe
   useEffect(() => {
-    if (reactiveQueue.length > 0 && !selectedId) {
-      setSelectedId(reactiveQueue[0].id);
+    fetchBackendQueue();
+  }, []);
+
+  const reactiveQueue = useMemo(() => {
+    return rawQueue.map((item) => {
+      const appointment = item.appointment || item;
+      const patient = appointment?.patient;
+
+      const birthYear = patient?.dateOfBirth
+        ? new Date(patient.dateOfBirth).getFullYear()
+        : 1990;
+      const currentYear = new Date().getFullYear();
+
+      return {
+        id: appointment?.id || item.appointmentId,
+        patientId: appointment?.patientId || null,
+        name: patient?.fullName
+          ? patient.fullName.toUpperCase()
+          : "UNKNOWN PATIENT",
+        age: currentYear - birthYear,
+        gender: patient?.gender?.toUpperCase() === "MALE" ? "M" : "F",
+        arrival: appointment?.createdAt
+          ? new Date(appointment.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "",
+        wait: "WAITING",
+        urgency: REVERSE_URGENCY_MAP[item.urgencyLevel] || 2,
+        vitals: {
+          bpSys: item.bloodPressure?.split("/")[0] || "120",
+          bpDia: item.bloodPressure?.split("/")[1] || "80",
+          hr: String(item.heartRate || "80"),
+          temp: String(item.temperature || "37.0"),
+          weight: String(item.weight || "70"),
+          spo2: String(item.spo2 || "98"),
+        },
+        notes: item.note || "",
+      };
+    });
+  }, [rawQueue]);
+
+  useEffect(() => {
+    if (reactiveQueue.length > 0) {
+      const idExists = reactiveQueue.some((p) => p.id === selectedId);
+
+      if (!selectedId || !idExists) {
+        setSelectedId(reactiveQueue[0].id);
+        setUrgencyLevel(reactiveQueue[0].urgency);
+      }
     }
   }, [reactiveQueue, selectedId]);
 
   const selectedPatient = useMemo(
-    () => reactiveQueue.find((p) => p.id === selectedId) || reactiveQueue[0] || null,
+    () =>
+      reactiveQueue.find((p) => p.id === selectedId) ||
+      reactiveQueue[0] ||
+      null,
     [reactiveQueue, selectedId],
   );
+
+  useEffect(() => {
+    if (selectedPatient) {
+      setUrgencyLevel(selectedPatient.urgency || 1);
+      setNotes(selectedPatient.notes || "");
+      setBp(
+        `${selectedPatient.vitals?.bpSys || "120"}/${selectedPatient.vitals?.bpDia || "80"}`,
+      );
+      setHr(selectedPatient.vitals?.hr || "80");
+      setTemp(selectedPatient.vitals?.temp || "37.0");
+      setWeight(selectedPatient.vitals?.weight || "70");
+      setSpo2(selectedPatient.vitals?.spo2 || "98");
+    } else {
+      setUrgencyLevel(3);
+      setNotes("");
+      setBp("120/80");
+      setHr("80");
+      setTemp("37.0");
+      setWeight("70");
+      setSpo2("98");
+    }
+  }, [selectedPatient]);
 
   const filteredQueue = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return reactiveQueue;
-    return reactiveQueue.filter((p) => (
-      p.name.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q)
-    ));
+    return reactiveQueue.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        String(p.id).toLowerCase().includes(q),
+    );
   }, [reactiveQueue, search]);
 
-  const criticalCount = triages.filter((t) => t.urgency_level === 4).length;
+  const criticalCount = useMemo(() => {
+    return rawQueue.filter((t) => t.urgencyLevel === "CRITICAL").length;
+  }, [rawQueue]);
+
   const activeBpStatus = getBpStatus(bp);
 
   const handleSelectPatient = (patient) => {
     setSelectedId(patient.id);
-    setNotes('');
+    setUrgencyLevel(patient.urgency);
+    setNotes(patient.notes);
+    setBp(`${patient.vitals.bpSys}/${patient.vitals.bpDia}`);
+    setHr(patient.vitals.hr);
+    setTemp(patient.vitals.temp);
+    setWeight(patient.vitals.weight);
+    setSpo2(patient.vitals?.spo2 || "98");
   };
 
-  // ==========================================================================
-  // METADATA MUTATION SUBMIT: Push valid payload down the line to Doctors
-  // ==========================================================================
   const handleMoveToDoctor = async () => {
     if (!selectedPatient) return;
     setIsSubmitting(true);
-    
+
     try {
-      // Package payload fields matching context parameters
-      const vitalsPayload = {
-        blood_pressure: bp,
-        temperature: temp,
-        heart_rate: hr,
-        weight: weight,
-        urgency_level: urgencyLevel,
-        note: notes
+      const parsedHeartRate = hr && !isNaN(hr) ? Number(hr) : null;
+      const parsedTemperature = temp && !isNaN(temp) ? Number(temp) : null;
+      const parsedWeight = weight && !isNaN(weight) ? Number(weight) : null;
+      const parsedSpo2 = spo2 && !isNaN(spo2) ? Number(spo2) : null;
+
+      const flatPayload = {
+        appointmentId: Number(selectedPatient.id),
+        bloodPressure: bp || null,
+        temperature: parsedTemperature,
+        weight: parsedWeight,
+        heartRate: parsedHeartRate,
+        spo2: parsedSpo2,
+        urgencyLevel: URGENCY_MAP[urgencyLevel] || "MEDIUM",
+        note: notes || null,
       };
 
-      // Call central workflow mutator
-      submitNurseTriage(selectedPatient.id, selectedPatient.patientId, vitalsPayload);
+      const matchedRawItem = rawQueue.find(
+        (t) => t.appointmentId === selectedPatient.id,
+      );
+      const isAlreadyTriaged = !!matchedRawItem?.urgencyLevel;
+
+      if (isAlreadyTriaged) {
+        await updateTriageRecord(Number(selectedPatient.id), flatPayload);
+      } else {
+        await createTriageRecord(flatPayload);
+      }
 
       setLogs((prev) => [
         {
           id: Date.now(),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: `${selectedPatient.name} transferred down pipeline to medical evaluation staff.`,
-          tone: 'success',
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          text: `${selectedPatient.name} successfully committed and handed over to doctor queue.`,
+          tone: "success",
         },
         ...prev,
       ]);
 
-      // Clear the current selections out to reset layout index tracking
-      setSelectedId('');
+      setSelectedId("");
+      setNotes("");
+      await fetchBackendQueue();
+      alert("Case successfully triaged and handed over!");
     } catch (err) {
       console.error("Pipeline breakdown pushing data forward:", err);
+      alert(
+        err.response?.data?.message ||
+          "Unique constraint error avoided, check network log.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex h-screen flex-col  bg-[#f4f6f8] text-left text-gray-900">
-      <Header 
+    <div className="flex h-screen flex-col bg-[#f8fafc] text-left text-slate-900 antialiased">
+      {/* 1. Header component placeholder updated to match Nurse.png perfectly */}
+      <Header
         user={currentUser}
         searchPlaceholder="Search..."
         searchValue={search}
@@ -169,44 +294,88 @@ function NurseDash() {
         hasNotifications={true}
       />
 
-      <main className="flex  flex-1 flex-col gap-4 p-4  ">
-        {/* Metric Cards Layout */}
+      <main className="flex flex-1 flex-col gap-6 p-6 overflow-hidden">
+        
+        {/* 2. Metric Cards Layout - Labels configured to align with Nurse.png details */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 shrink-0">
-          <MetricCard label="Logged Critical Statuses" value={`0${criticalCount}`} icon={AlertTriangle} iconBgColor="bg-rose-50" iconColor="text-rose-600" />
-          <MetricCard label="Target Cycle Time" value="14 min" icon={TimerReset} iconBgColor="bg-teal-50" iconColor="text-teal-600" />
-          <MetricCard label="Awaiting Triage Buffer" value={String(reactiveQueue.length).padStart(2, '0')} icon={Users} iconBgColor="bg-gray-100" iconColor="text-gray-500" />
-          <MetricCard label="Total Tracked Today" value={25 + triages.length} icon={CheckCircle2} iconBgColor="bg-emerald-50" iconColor="text-emerald-600" />
+          <MetricCard
+            label="CRITICAL PATIENTS"
+            value={`0${criticalCount}`}
+            icon={AlertTriangle}
+            iconBgColor="bg-rose-50"
+            iconColor="text-rose-600"
+          />
+          <MetricCard
+            label="AVG. WAIT TIME"
+            value="14 min"
+            icon={TimerReset}
+            iconBgColor="bg-teal-50"
+            iconColor="text-teal-600"
+          />
+          <MetricCard
+            label="AWAITING TRIAGE"
+            value={String(reactiveQueue.length).padStart(2, "0")}
+            icon={Users}
+            iconBgColor="bg-slate-100"
+            iconColor="text-slate-500"
+          />
+          <MetricCard
+            label="TOTAL MANAGED TODAY"
+            value={String(rawQueue.length).padStart(2, "0")}
+            icon={CheckCircle2}
+            iconBgColor="bg-emerald-50"
+            iconColor="text-emerald-600"
+          />
         </section>
 
-        {/* Core Workspace Panels Layout */}
-        <section className="grid  flex-1 grid-cols-1 gap-4 xl:grid-cols-12 overflow-hidden">
-          <LiveQueue 
-            queue={filteredQueue} 
-            selectedId={selectedId} 
-            onSelectPatient={handleSelectPatient} 
-            urgencyMeta={URGENCY_META} 
-          />
+        {/* 3. Core Workspace Layout - Side-by-side layout containing queue and details dashboard panels */}
+        <section className="grid flex-1 grid-cols-1 gap-6 xl:grid-cols-12 overflow-hidden">
+          {apiError ? (
+            <div className="xl:col-span-7 flex items-center justify-center bg-white rounded-xl border p-6 text-rose-500">
+              <TriangleAlert className="mr-2" /> {apiError}
+            </div>
+          ) : isLoadingQueue ? (
+            <div className="xl:col-span-7 flex items-center justify-center bg-white rounded-xl border p-6 text-slate-400 font-medium">
+              Processing data sync streams...
+            </div>
+          ) : (
+            <div className="xl:col-span-7 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
+              <LiveQueue
+                queue={filteredQueue}
+                selectedId={selectedId}
+                onSelectPatient={handleSelectPatient}
+                urgencyMeta={URGENCY_META}
+              />
+            </div>
+          )}
 
-          <div className="flex  flex-col gap-4 xl:col-span-5 overflow-hidden">
-            {/* Added local state hooks inputs variables to capture changing fields elements inside form view */}
-            <ActiveTriagePanel
-              selectedPatient={selectedPatient}
-              urgencyLevel={urgencyLevel}
-              setUrgencyLevel={setUrgencyLevel}
-              vitals={{ bp, hr, temp, weight }}
-              setBp={setBp}
-              setHr={setHr}
-              setTemp={setTemp}
-              setWeight={setWeight}
-              bpStatus={activeBpStatus}
-              notes={notes}
-              setNotes={setNotes}
-              onMoveToDoctor={handleMoveToDoctor}
-              isSubmitting={isSubmitting}
-              urgencyMeta={URGENCY_META}
-            />
+          {/* RIGHT SIDEBAR: Houses Active Triage Assessment Panel and Station Event Records */}
+          <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm分 break-words">
             
-            <StationLogs logs={logs} />
+            {/* Triage Inputs Engine Section */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <ActiveTriagePanel
+                selectedPatient={selectedPatient}
+                urgencyLevel={urgencyLevel}
+                setUrgencyLevel={setUrgencyLevel}
+                vitals={{ bp, hr, temp, weight, spo2 }}
+                setBp={setBp}
+                setHr={setHr}
+                setTemp={setTemp}
+                setWeight={setWeight}
+                setSpo2={setSpo2}
+                bpStatus={activeBpStatus}
+                notes={notes}
+                setNotes={setNotes}
+                onMoveToDoctor={handleMoveToDoctor}
+                isSubmitting={isSubmitting}
+                urgencyMeta={URGENCY_META}
+              />
+            </div>
+            
+        
+              <StationLogs logs={logs} />
+
           </div>
         </section>
       </main>

@@ -1,14 +1,17 @@
 import prisma from "../lib/prisma.js";
 
-// 1. Get all appointments waiting for the doctor
 export const findDoctorQueue = async () => {
-  return await prisma.appointment.findMany({
-    where: { status: "PENDING" }, 
+  return prisma.appointment.findMany({
+    where: {
+      status: "CONFIRMED"
+    },
     include: {
       patient: true,
       triage: true
     },
-    orderBy: { appointmentDate: "asc" }
+    orderBy: {
+      createdAt: "asc"
+    }
   });
 };
 
@@ -31,7 +34,7 @@ export const findHistoryByPatientId = async (patientId: number) => {
 export const saveConsultation = async (data: any, doctorId: number) => {
   return await prisma.$transaction(async (tx) => {
     
-    // 1. Safety check: Verify the appointment exists first
+   
     const appointmentExists = await tx.appointment.findUnique({
       where: { id: data.appointmentId }
     });
@@ -44,7 +47,6 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
 
     if (data.medications && data.medications.length > 0) {
-      // Ensure medication IDs are numbers to satisfy Prisma typing
       const uniqueMedIds = Array.from(
         new Set(data.medications.map((m: any) => Number(m.medicationId)))
       ) as number[];
@@ -78,7 +80,6 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
     // B. Create a single PENDING prescription header to group all medicines together
     if (data.medications && data.medications.length > 0) {
-      // Clean old prescription if it exists to avoid 1-to-1 unique blocks during multiple tests
       await tx.prescription.deleteMany({
         where: { medicalRecordId: record.id }
       });
@@ -114,22 +115,6 @@ export const saveConsultation = async (data: any, doctorId: number) => {
     });
 
     return record;
-  });
-};
-
-// 4. Retrieve a list of consultations handled by a single doctor today
-export const findDailyLogByDoctor = async (doctorId: unknown) => {
-  const cleanDoctorId = Number(doctorId);
-
-  return await prisma.medicalRecord.findMany({
-    where: {
-      userId: cleanDoctorId
-    },
-    include: {
-      patient: true,
-      appointment: true
-    },
-    orderBy: { visitDate: "desc" }
   });
 };
 

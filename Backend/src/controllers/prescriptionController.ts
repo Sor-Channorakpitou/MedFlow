@@ -8,7 +8,7 @@ import * as prescriptionService
 from "../services/prescriptionService.js";
 
 // 1. Pending prescriptions
-export const getPendingPrescriptions = async (
+export const getPendingPrescriptions = async (  
   req: Request,
   res: Response,
   next: NextFunction

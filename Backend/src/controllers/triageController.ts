@@ -3,11 +3,9 @@ import { TriageStatus } from "@prisma/client";
 import {
   createTriageRecord,
   getSortedQueue,
-  getAllTriageRecords,
-  getFilteredQueueByUrgency,
   getTriageByAppointmentId,
   updateTriageRecord,
-  deleteTriageRecord
+
 } from "../services/triageService.js";
 
 export const addTriage = async (req: Request, res: Response, next: NextFunction) => {
@@ -29,23 +27,6 @@ export const getQueue = async (req: Request, res: Response, next: NextFunction) 
   } catch (error) { next(error); }
 };
 
-export const getAllTriages = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const records = await getAllTriageRecords();
-    return res.json({ success: true, count: records.length, records });
-  } catch (error) { next(error); }
-};
-
-export const filterQueueByUrgency = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { urgency } = req.query;
-    if (!urgency || !Object.values(TriageStatus).includes(urgency as TriageStatus)) {
-      return res.status(400).json({ message: "Invalid or missing urgency level parameter" });
-    }
-    const queue = await getFilteredQueueByUrgency(urgency as TriageStatus);
-    return res.json({ success: true, count: queue.length, queue });
-  } catch (error) { next(error); }
-};
 
 export const getTriageByAppointment = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -82,12 +63,3 @@ export const updateTriage = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const deleteTriage = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await deleteTriageRecord(Number(req.params.appointmentId));
-    return res.json({ message: "Triage record removed and appointment reverted to pending" });
-  } catch (error: any) {
-    if (error.message === "TRIAGE_RECORD_NOT_FOUND") return res.status(404).json({ message: "Triage record not found" });
-    next(error);
-  }
-};

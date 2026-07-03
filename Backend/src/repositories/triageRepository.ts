@@ -4,7 +4,7 @@ import type { CreateTriageInput, UpdateTriageInput } from '../validations/triage
 const prisma = new PrismaClient();
 
 export class TriageRepository {
-  async createTriage(data: CreateTriageInput) {
+ async createTriage(data: CreateTriageInput) {
     return prisma.triage.create({
       data: {
         appointmentId: data.appointmentId,
@@ -23,15 +23,6 @@ export class TriageRepository {
     });
   }
 
-  async getTriageById(triageId: number) {
-    return prisma.triage.findUnique({
-      where: { id: triageId },
-      include: {
-        appointment: { include: { patient: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
 
   async getTriageByAppointmentId(appointmentId: number) {
     return prisma.triage.findUnique({
@@ -61,23 +52,4 @@ export class TriageRepository {
     });
   }
 
-  async getAllTriages(urgencyLevel?: TriageStatus) {
-    return prisma.triage.findMany({
-      where: urgencyLevel ? { urgencyLevel } : {},
-      include: {
-        appointment: { include: { patient: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: [
-        { urgencyLevel: 'desc' },
-        { createdAt: 'desc' }
-      ],
-    });
-  }
-
-  async deleteTriage(triageId: number) {
-    return prisma.triage.delete({
-      where: { id: triageId },
-    });
-  }
 }
