@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     };
 
     const updateCurrentUser = (updates) => {
-        setCurrentUser((prev) => ({
+        setUser((prev) => ({
             ...prev,
             ...updates,
         }

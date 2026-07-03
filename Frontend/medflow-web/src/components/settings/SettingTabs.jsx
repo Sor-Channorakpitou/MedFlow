@@ -1,7 +1,7 @@
 import React from 'react';
 
 function SettingsTabs({ activeTab, setActiveTab }) {
-  const tabs = ['Profile', 'Notifications', 'AboutMedFlow'];
+  const tabs = ['Profile', 'Notifications'];
 
   return (
     <div className="border-b border-gray-200">

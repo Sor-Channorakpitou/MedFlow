@@ -1,15 +1,22 @@
 import { User, Upload } from 'lucide-react';
 import React from 'react';
+import { useAuth } from '../../hooks/useAuth';
 
 function ProfileSummary({ profileMetadata }) {
   const { name, title, status, lastLogin, location, metrics } = profileMetadata;
+  const { user } = useAuth();
 
   return (
     <div className="space-y-6">
       {/* Visual Identity Badge */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center">
-        <div className="w-20 h-20 bg-slate-700 text-white font-bold text-2xl rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-          <User className="w-10 h-10" />
+        <div className="w-20 h-20 text-white-bold text-2xl rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+          {user?.profileImage? 
+            ( <img src={user?.profileImage} alt="profile"/> )
+            : 
+            (
+              <User size={40} strokeWidth={1.5} />
+            )}
         </div>
         <h3 className="text-lg font-bold text-gray-900">{name}</h3>
         <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide">{title}</p>
@@ -20,14 +27,6 @@ function ProfileSummary({ profileMetadata }) {
             <span className="text-emerald-600 font-medium flex items-center gap-1">
               <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span> {status}
             </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Last Login</span>
-            <span className="text-gray-800 font-medium">{lastLogin}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Location</span>
-            <span className="text-gray-800 font-medium text-right">{location}</span>
           </div>
         </div>
 
