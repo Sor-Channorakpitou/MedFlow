@@ -10,6 +10,7 @@ if (!ACCESS_SECRET || !REFRESH_SECRET) {
 export type AccessPayload = {
     id: number;
     role: string;
+    username: string;
 };
 
 export type RefreshPayload = {

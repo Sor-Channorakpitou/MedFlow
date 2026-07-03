@@ -1,8 +1,8 @@
 import api from "./api";
 const API_BASE_URL = '/auth';
 
-export const login = async (data) => {
-    const res = await api.post(`${API_BASE_URL}/login`, data);
+export const login = async (credentials) => {
+    const res = await api.post(`${API_BASE_URL}/login`, credentials);
     return res.data;
 };
 

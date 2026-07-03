@@ -10,7 +10,15 @@ export const toUserDTO = (user: any) => ({
     name: user.name,
     phone: user.phone,
     roleId: user.roleId,
-    dateOfBirth: formatDateOnly(user.dateOfBirth)
+    role: user.role
+        ? {
+            id: user.role.id,
+            name: user.role.name,
+        }
+        : null,
+    dateOfBirth: formatDateOnly(user.dateOfBirth),
+    profileImage: user.profileImage,
+    isActive: user.isActive,
 });
 
 export const toPatientDTO = (patient: any) => ({

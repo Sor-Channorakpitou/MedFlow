@@ -32,6 +32,8 @@ model User {
   prescriptions  Prescription[]
   refreshTokens  RefreshToken[]
   triages        Triage[]
+  queues         Queue[]
+
   role           Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
 }
 
@@ -48,6 +50,7 @@ model Patient {
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
   prescriptions  Prescription[]
+  queues         Queue[]
 }
 
 model Appointment {
@@ -81,6 +84,21 @@ model Medication {
   prescriptionMedications PrescriptionMedication[]
 }
 
+model InvoiceItem {
+  id            Int           @id @default(autoincrement())
+  unitPrice     Decimal       @db.Decimal(10, 2)
+  description   String
+  type          String
+  subTotal      Decimal       @db.Decimal(10, 2)
+  quantity      Int 
+  invoiceId     Int
+
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+
+  @@index([invoiceId])
+}
+
 model Invoice {
   id            Int           @id @default(autoincrement())
   paymentMethod String
@@ -89,11 +107,14 @@ model Invoice {
   totalAmount   Decimal       @db.Decimal(10, 2)
   appointmentId Int           @unique
   patientId     Int
+  invoiceItemId     Int
   userId        Int
 
   appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  invoiceItems InvoiceItem[]
 
   @@index([patientId])
 }
@@ -167,9 +188,27 @@ model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
   userId    Int
-  expiresAt DateTime @default(now())
+  expiresAt DateTime 
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Queue {
+  id              Int      @id @default(autoincrement())
+
+  patientId       Int      @unique
+  patient         Patient  @relation(fields: [patientId], references: [id])
+
+  stage           Stage
+  status          QueueStatus
+
+  queueNumber     Int
+
+  userId          Int?
+  user            User? @relation(fields: [userId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model playing_with_neon {
@@ -210,4 +249,22 @@ enum TriageStatus {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+enum Stage {
+  RECEPTION
+  TRIAGE
+  DOCTOR
+  LABORATORY
+  PHARMACY
+  BILLING
+  COMPLETED
+}
+
+enum QueueStatus {
+  WAITING
+  IN_PROGRESS
+  TRANSFERRED
+  COMPLETED
+  CANCELLED
 }

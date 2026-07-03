@@ -1,5 +1,6 @@
-import { useEffect, useState, createContext } from "react";
+import { useEffect, useState, createContext, use } from "react";
 import * as authAPI from "../services/authAPI";
+import { setAccessToken } from "../services/api";
 
 export const AuthContext = createContext(null);
 
@@ -23,22 +24,34 @@ export function AuthProvider({ children }) {
     }, []);
 
     const login = async (credentials) => {
-        await authAPI.login(credentials);
+        const res = await authAPI.login(credentials);
+        setAccessToken(res.accessToken); 
 
-        const res = await authAPI.getCurrentUser();
-        setUser(res.data.user);
+        const userRes = await authAPI.getCurrentUser();
+        setUser(userRes.user);
+        return userRes.user; 
     };
 
     const logout = async () => {
         try {
             await authAPI.logout();
         } finally {
+            setAccessToken(null); 
             setUser(null);
         }
     };
 
+    const updateCurrentUser = (updates) => {
+        setCurrentUser((prev) => ({
+            ...prev,
+            ...updates,
+        }
+    ));
+};
+
     const value = {
         user,
+        updateCurrentUser,
         loading,
         isAuthenticated: !!user,
         login,
