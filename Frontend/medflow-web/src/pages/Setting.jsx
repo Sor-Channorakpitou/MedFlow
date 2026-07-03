@@ -4,13 +4,13 @@ import SettingTabs from "../components/settings/SettingTabs";
 import ProfileForm from "../components/settings/ProfileForm";
 import ProfileSummary from "../components/settings/ProfileSummary";
 import NotificationSettings from "../components/settings/NotificationSettings";
-import AboutMedFlow from "../components/settings/AboutMedFlow";
-
+import { uploadProfileImage } from "../services/userAPI"
 import { Save } from "lucide-react";
 import { useWorkflow } from "../context/WorkflowContext"; // Import pipeline engine link
+import { useAuth } from "../hooks/useAuth";
 
 function Setting() {
-  const { currentUser } = useWorkflow(); // Gather current logged in profile dataset
+  const { user, updateCurrentUser } = useAuth();
   
   const [activeTab, setActiveTab] = useState("Profile");
 
@@ -20,8 +20,9 @@ function Setting() {
     email: "",
     phone: "",
     dob: "",
-    staffId: "",
-    department: "",
+    id: "",
+    role: "",
+    profile: ""
   });
 
   // State 2: System Controlled Account Metadata (Profile Side-Card)
@@ -29,33 +30,30 @@ function Setting() {
     name: "",
     title: "",
     status: "ACTIVE",
-    lastLogin: "",
-    location: "",
     metrics: { patientReviewsToday: 0, approvalsPending: 0 },
   });
 
   // Whenever the active worker identity changes in the context, re-populate the inputs dynamically
   useEffect(() => {
-    if (currentUser) {
+    if (user) {
       setFormData({
-        fullName: currentUser.fullName,
-        email: currentUser.email,
-        phone: currentUser.phone,
-        dob: currentUser.dob,
-        staffId: currentUser.staffId,
-        department: currentUser.department,
+        username: user.name,
+        email: user.email,
+        phone: user.phone,
+        dob: user.dateOfBirth,
+        id: user.id,
+        role: user.role.name,
+        profile: user.profileImage,
       });
 
-      setProfileMetadata({
-        name: currentUser.fullName,
-        title: currentUser.title,
-        status: currentUser.status,
-        lastLogin: currentUser.lastLogin,
-        location: currentUser.location,
-        metrics: currentUser.metrics,
-      });
+      setProfileMetadata(prev => ({
+        ...prev,
+        name: user.name,
+        title: user.role.name,
+        metrics: { patientReviewsToday: 3, approvalsPending: 12 }
+      }));
     }
-  }, [currentUser]);
+  }, [user]);
 
   // State 3: Notification Toggles Configuration Matrix (Notifications Tab)
   const [notifications, setNotifications] = useState({
@@ -89,17 +87,6 @@ function Setting() {
     }));
   };
 
-  const handleSaveChanges = (e) => {
-    e.preventDefault();
-    if (activeTab === "Profile") {
-      console.log(`PATCH /api/v1/staff/${formData.staffId}/profile payload:`, formData);
-      alert(`Profile configuration changes updated for ${formData.fullName}!`);
-    } else if (activeTab === "Notifications") {
-      console.log(`PUT /api/v1/staff/${formData.staffId}/notifications payload:`, notifications);
-      alert("Notification rules updated successfully!");
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6">
       {/* Dynamic Header Frame Area */}
@@ -108,24 +95,13 @@ function Setting() {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
             {activeTab === "Notifications" && "Notification Settings"}
             {activeTab === "Profile" && "Profile Settings"}
-            {activeTab === "AboutMedFlow" && "System Information"}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {activeTab === "Profile" && `Manage your professional administrative clinical profile as a ${profileMetadata.title}.`}
             {activeTab === "Notifications" && "Configure how and when you receive clinical and system alerts."}
-            {activeTab === "AboutMedFlow" && "System runtime diagnostics and legal documentation compliance profiles."}
           </p>
         </div>
 
-        {activeTab !== "AboutMedFlow" && (
-          <button
-            onClick={handleSaveChanges}
-            className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium tracking-wide shadow-sm transition-all"
-          >
-            <Save className="w-4 h-4" />
-            Save Changes
-          </button>
-        )}
       </div>
 
       <SettingTabs activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -134,9 +110,10 @@ function Setting() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <ProfileForm
-              formData={formData}
+              user={formData}
+              onUpload={uploadProfileImage}
+              onUpdateUser={updateCurrentUser}
               onChange={handleInputChange}
-              onSave={handleSaveChanges}
             />
           </div>
           <div>
@@ -149,11 +126,10 @@ function Setting() {
         <NotificationSettings
           config={notifications}
           onToggle={handleNotificationToggle}
-          role={profileMetadata.title} // Optional: pass down if child elements alter layouts base on role
+          role={profileMetadata.title} 
         />
       )}
 
-      {activeTab === "AboutMedFlow" && <AboutMedFlow />}
     </div>
   );
 }
