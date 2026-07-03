@@ -4,6 +4,8 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+
+
 /**
  * @swagger
  * /auth/login:

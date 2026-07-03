@@ -9,19 +9,15 @@ import {
   CircleDot,
 } from "lucide-react";
 
+// Import your newly created global workflow hook
+import { useWorkflow } from "../context/WorkflowContext";
+
 import MetricCard from "../components/nurse/MetricCard";
 import LiveQueue from "../components/nurse/LiveQueue";
 import ActiveTriagePanel from "../components/nurse/ActiveTriagePanel";
 import StationLogs from "../components/nurse/StationLogs";
 import Header from "../components/Header";
 
-import {
-  getLiveQueue,
-  createTriageRecord,
-  updateTriageRecord,
-} from "../services/triageAPI";
-
-// Modified styling mapping directly over to text/border states
 const URGENCY_META = {
   4: {
     label: "CRITICAL",
@@ -55,6 +51,7 @@ const REVERSE_URGENCY_MAP = {
   HIGH: 3,
   CRITICAL: 4,
 };
+
 const URGENCY_MAP = {
   1: "LOW",
   2: "MEDIUM",
@@ -72,9 +69,13 @@ function getBpStatus(bpString) {
 }
 
 function NurseDash() {
-  const [rawQueue, setRawQueue] = useState([]);
-  const [isLoadingQueue, setIsLoadingQueue] = useState(true);
-  const [apiError, setApiError] = useState(null);
+  // Consume your centralized real-time sync layer engine
+  const { 
+    triageQueue: rawQueue, 
+    loading: isLoadingQueue, 
+    createTriageRecord: globalCreateTriage, 
+    updateTriageRecord: globalUpdateTriage 
+  } = useWorkflow();
 
   const [selectedId, setSelectedId] = useState("");
   const [urgencyLevel, setUrgencyLevel] = useState(3);
@@ -96,26 +97,6 @@ function NurseDash() {
     initials: "SJ",
   };
 
-  const fetchBackendQueue = async () => {
-    try {
-      setIsLoadingQueue(true);
-      const data = await getLiveQueue();
-      if (data?.success) {
-        setRawQueue(data.queue || []);
-        setApiError(null);
-      }
-      console.log(data);
-    } catch (err) {
-      setApiError("Failed to sync live triage queue.");
-    } finally {
-      setIsLoadingQueue(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchBackendQueue();
-  }, []);
-
   const reactiveQueue = useMemo(() => {
     return rawQueue.map((item) => {
       const appointment = item.appointment || item;
@@ -129,9 +110,7 @@ function NurseDash() {
       return {
         id: appointment?.id || item.appointmentId,
         patientId: appointment?.patientId || null,
-        name: patient?.fullName
-          ? patient.fullName.toUpperCase()
-          : "UNKNOWN PATIENT",
+        name: patient?.fullName ? patient.fullName.toUpperCase() : "UNKNOWN PATIENT",
         age: currentYear - birthYear,
         gender: patient?.gender?.toUpperCase() === "MALE" ? "M" : "F",
         arrival: appointment?.createdAt
@@ -158,7 +137,6 @@ function NurseDash() {
   useEffect(() => {
     if (reactiveQueue.length > 0) {
       const idExists = reactiveQueue.some((p) => p.id === selectedId);
-
       if (!selectedId || !idExists) {
         setSelectedId(reactiveQueue[0].id);
         setUrgencyLevel(reactiveQueue[0].urgency);
@@ -167,10 +145,7 @@ function NurseDash() {
   }, [reactiveQueue, selectedId]);
 
   const selectedPatient = useMemo(
-    () =>
-      reactiveQueue.find((p) => p.id === selectedId) ||
-      reactiveQueue[0] ||
-      null,
+    () => reactiveQueue.find((p) => p.id === selectedId) || reactiveQueue[0] || null,
     [reactiveQueue, selectedId],
   );
 
@@ -178,9 +153,7 @@ function NurseDash() {
     if (selectedPatient) {
       setUrgencyLevel(selectedPatient.urgency || 1);
       setNotes(selectedPatient.notes || "");
-      setBp(
-        `${selectedPatient.vitals?.bpSys || "120"}/${selectedPatient.vitals?.bpDia || "80"}`,
-      );
+      setBp(`${selectedPatient.vitals?.bpSys || "120"}/${selectedPatient.vitals?.bpDia || "80"}`);
       setHr(selectedPatient.vitals?.hr || "80");
       setTemp(selectedPatient.vitals?.temp || "37.0");
       setWeight(selectedPatient.vitals?.weight || "70");
@@ -200,9 +173,7 @@ function NurseDash() {
     const q = search.trim().toLowerCase();
     if (!q) return reactiveQueue;
     return reactiveQueue.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        String(p.id).toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || String(p.id).toLowerCase().includes(q)
     );
   }, [reactiveQueue, search]);
 
@@ -244,24 +215,20 @@ function NurseDash() {
         note: notes || null,
       };
 
-      const matchedRawItem = rawQueue.find(
-        (t) => t.appointmentId === selectedPatient.id,
-      );
+      const matchedRawItem = rawQueue.find((t) => t.appointmentId === selectedPatient.id);
       const isAlreadyTriaged = !!matchedRawItem?.urgencyLevel;
 
+      // Swap out old triageAPI requests for our globally scoped context actions
       if (isAlreadyTriaged) {
-        await updateTriageRecord(Number(selectedPatient.id), flatPayload);
+        await globalUpdateTriage(Number(selectedPatient.id), flatPayload);
       } else {
-        await createTriageRecord(flatPayload);
+        await globalCreateTriage(flatPayload);
       }
 
       setLogs((prev) => [
         {
           id: Date.now(),
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           text: `${selectedPatient.name} successfully committed and handed over to doctor queue.`,
           tone: "success",
         },
@@ -270,14 +237,10 @@ function NurseDash() {
 
       setSelectedId("");
       setNotes("");
-      await fetchBackendQueue();
       alert("Case successfully triaged and handed over!");
     } catch (err) {
       console.error("Pipeline breakdown pushing data forward:", err);
-      alert(
-        err.response?.data?.message ||
-          "Unique constraint error avoided, check network log.",
-      );
+      alert(err.response?.data?.message || "Error transmitting updates over triage stream.");
     } finally {
       setIsSubmitting(false);
     }
@@ -285,7 +248,6 @@ function NurseDash() {
 
   return (
     <div className="flex h-screen flex-col bg-[#f8fafc] text-left text-slate-900 antialiased">
-      {/* 1. Header component placeholder updated to match Nurse.png perfectly */}
       <Header
         user={currentUser}
         searchPlaceholder="Search patient name, ID, or triage level..."
@@ -296,7 +258,7 @@ function NurseDash() {
 
       <main className="flex flex-1 flex-col gap-6 p-6 overflow-hidden">
         
-        {/* 2. Metric Cards Layout - Labels configured to align with Nurse.png details */}
+        {/* Metric Cards Layout */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 shrink-0">
           <MetricCard
             label="CRITICAL PATIENTS"
@@ -328,15 +290,11 @@ function NurseDash() {
           />
         </section>
 
-        {/* 3. Core Workspace Layout - Side-by-side layout containing queue and details dashboard panels */}
+        {/* Core Workspace Layout */}
         <section className="grid flex-1 grid-cols-1 gap-6 xl:grid-cols-12 overflow-hidden">
-          {apiError ? (
-            <div className="xl:col-span-7 flex items-center justify-center bg-white rounded-xl border p-6 text-rose-500">
-              <TriangleAlert className="mr-2" /> {apiError}
-            </div>
-          ) : isLoadingQueue ? (
+          {isLoadingQueue ? (
             <div className="xl:col-span-7 flex items-center justify-center bg-white rounded-xl border p-6 text-slate-400 font-medium">
-              Processing data sync streams...
+              Processing live triage queue streams...
             </div>
           ) : (
             <div className="xl:col-span-7 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -349,10 +307,8 @@ function NurseDash() {
             </div>
           )}
 
-          {/* RIGHT SIDEBAR: Houses Active Triage Assessment Panel and Station Event Records */}
-          <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm分 break-words">
-            
-            {/* Triage Inputs Engine Section */}
+          {/* RIGHT SIDEBAR */}
+          <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm break-words">
             <div className="flex-1 min-h-0 overflow-y-auto">
               <ActiveTriagePanel
                 selectedPatient={selectedPatient}
@@ -372,10 +328,7 @@ function NurseDash() {
                 urgencyMeta={URGENCY_META}
               />
             </div>
-            
-        
-              <StationLogs logs={logs} />
-
+            <StationLogs logs={logs} />
           </div>
         </section>
       </main>

@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger";
@@ -19,13 +21,32 @@ import prescriptionRouter from "./routes/prescriptionRoutes.js"
 
 const app = express();
 
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: { origin: "http://localhost:5173" }
+});
+
+io.on("connection", (socket) => {
+  console.log(` Connected: ${socket.id}`);
+});
+
+app.set("io", io);
+
 app.use(cors({
     origin: "http://localhost:5173",
     credentials: true
 }));
 app.use(cookieParser());
 app.use(express.json());
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+const swaggerOptions = {
+  swaggerOptions: {
+    persistAuthorization: true 
+  }
+};
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 
 
 app.use('/api/auth', authRoute);

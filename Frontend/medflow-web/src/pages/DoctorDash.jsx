@@ -8,18 +8,22 @@ import SymptomsAndActions from "../components/doctor/SymptomsAndActions";
 import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry";
 import Header from "../components/Header";
 
+// Import your newly created global workflow hook
+import { useWorkflow } from "../context/WorkflowContext";
 
-import {
-  getAwaitingPatients,
-  getPatientHistory,
-  submitConsultation,
-} from "../services/consultationAPI";
+// Retained purely for history line queries matching user selections
+import { getPatientHistory } from "../services/consultationAPI";
 
 function DoctorDash() {
-  const [rawQueue, setRawQueue] = useState([]);
+
+  const { 
+    consultationQueue: rawQueue, 
+    loading: isLoading, 
+    submitDoctorConsultation 
+  } = useWorkflow();
+
   const [activeQueueId, setActiveQueueId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [patientHistory, setPatientHistory] = useState([]);
 
   const [prescribedMeds, setPrescribedMeds] = useState([]);
@@ -43,79 +47,53 @@ function DoctorDash() {
     initials: "AT",
   };
 
-  const fetchQueueData = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getAwaitingPatients();
-      setRawQueue(data?.queue || data || []);
-    } catch (err) {
-      console.error("Failed to load doctor consultation pipeline:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const reactiveQueue = useMemo(() => {
+    return rawQueue
+      .map((item) => {
+        const patient = item.patient;
+        const triage = item.triage;
 
-  useEffect(() => {
-  fetchQueueData();
-}, []);
+        if (!patient || !triage) return null;
 
+        const birthYear = patient.dateOfBirth
+          ? new Date(patient.dateOfBirth).getFullYear()
+          : new Date().getFullYear();
 
+        const currentYear = new Date().getFullYear();
 
-const reactiveQueue = useMemo(() => {
-  return rawQueue
-    .map((item) => {
-      const patient = item.patient;
-      const triage = item.triage;
-
-      if (!patient || !triage) return null;
-
-      const birthYear = patient.dateOfBirth
-        ? new Date(patient.dateOfBirth).getFullYear()
-        : new Date().getFullYear();
-
-      const currentYear = new Date().getFullYear();
-
-      return {
-        id: item.id,
-        patientId: item.patientId,
-
-        name: patient.fullName.toUpperCase(),
-
-        type: "WAITING",
-
-        time: new Date(item.createdAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-
-        reason: item.reason,
-
-        age: `${currentYear - birthYear} Y.O.`,
-
-        gender:
-          patient.gender === "MALE"
-            ? "Male"
-            : patient.gender === "FEMALE"
-            ? "Female"
-            : "Unknown",
-
-        room: "Exam Room 3",
-
-        vitals: {
-          bloodPressure: triage.bloodPressure,
-          heartRate: triage.heartRate,
-          temperature: triage.temperature,
-          weight: triage.weight,
-          urgencyLevel: triage.urgencyLevel,
-          note: triage.note,
-        },
-      };
-    })
-    .filter(Boolean)
-    .filter((item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-}, [rawQueue, searchQuery]);
+        return {
+          id: item.id,
+          patientId: item.patientId,
+          name: patient.fullName.toUpperCase(),
+          type: "WAITING",
+          time: new Date(item.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          reason: item.reason,
+          age: `${currentYear - birthYear} Y.O.`,
+          gender:
+            patient.gender === "MALE"
+              ? "Male"
+              : patient.gender === "FEMALE"
+              ? "Female"
+              : "Unknown",
+          room: "Exam Room 3",
+          vitals: {
+            bloodPressure: triage.bloodPressure,
+            heartRate: triage.heartRate,
+            temperature: triage.temperature,
+            weight: triage.weight,
+            urgencyLevel: triage.urgencyLevel,
+            note: triage.note,
+          },
+        };
+      })
+      .filter(Boolean)
+      .filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+  }, [rawQueue, searchQuery]);
 
   useEffect(() => {
     if (reactiveQueue.length > 0 && !activeQueueId) {
@@ -131,11 +109,10 @@ const reactiveQueue = useMemo(() => {
     );
   }, [reactiveQueue, activeQueueId]);
 
-  // Synchronized context setup logic for isolating and updating active charts
+  // Flush and reload workspace elements when active card selection switches
   useEffect(() => {
     if (!activeCase) return;
 
-    // 1. Flush past inputs so data doesn't cross-bleed between patient records
     setPrescribedMeds([]);
     setSymptoms((prev) => prev.map((s) => ({ ...s, checked: false })));
 
@@ -152,7 +129,6 @@ const reactiveQueue = useMemo(() => {
       plan: "",
     });
 
-    // 3. Populate past data tracking logs
     getPatientHistory(activeCase.patientId)
       .then((res) => setPatientHistory(res?.history || res || []))
       .catch(() => setPatientHistory([]));
@@ -205,42 +181,25 @@ const reactiveQueue = useMemo(() => {
         };
       });
 
-      const finalMedsPayload = targetMedications.length > 0 ? targetMedications : [];
-
       const consultationPayload = {
         appointmentId: Number(activeCase.id),
         patientId: Number(activeCase.patientId),
         diagnosis: soapNotes.assessment || "General Clinical Follow-up",
         notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),
         symptoms: activeCheckedSymptoms,
-        medications: finalMedsPayload,
+        medications: targetMedications.length > 0 ? targetMedications : [],
       };
 
-      console.log("Pushing sanitized payload to backend:", consultationPayload);
-
-      await submitConsultation(consultationPayload);
+      // Call our centralized context socket action
+      await submitDoctorConsultation(consultationPayload);
 
       setActiveQueueId("");
-      await fetchQueueData();
-
       alert("Consultation finalized successfully. Case dispatched to pharmacy.");
     } catch (err) {
       console.error("Consultation submission crash:", err);
       alert("Failed to commit case records. Check network configurations.");
     }
   };
-
-  useEffect(() => {
-  console.log("Raw Queue:", rawQueue);
-}, [rawQueue]);
-
-useEffect(() => {
-  console.log("Reactive Queue:", reactiveQueue);
-}, [reactiveQueue]);
-
-useEffect(() => {
-  console.log("Loading:", isLoading);
-}, [isLoading]);
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden px-4 py-3">
@@ -285,10 +244,10 @@ useEffect(() => {
             <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-1">
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm shrink-0">
                 <SoapNotesForm
-                className="h-full"
-                data={soapNotes} 
-                onChange={handleSoapChange}
-                 />
+                  className="h-full"
+                  data={soapNotes} 
+                  onChange={handleSoapChange}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[300px]">
