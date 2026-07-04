@@ -1,187 +1,201 @@
-// src/context/WorkflowContext.jsx
-import React, { createContext, useState, useContext, useMemo} from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { 
-  MOCK_USERS, 
-  MOCK_STAFF_PROFILES,
-  MOCK_PATIENTS, 
-  MOCK_APPOINTMENTS, 
-  MOCK_TRIAGES, 
-  MOCK_PRESCRIPTIONS, 
-  MOCK_PRESCRIPTION_ITEMS,
-  MOCK_WORKLOADS
-} from '../constants/mockData';
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
+
+import axios from "../services/api";
+
+import { SocketContext } from "./SocketContext"; 
+
+
+import { getLiveQueue } from '../services/triageAPI'; // Adjust paths as necessary
+import { getPendingPrescriptions } from '../services/prescriptionAPI'; // Adjust paths as necessary
+import { getAwaitingPatients } from '../services/consultationAPI'; // Adjust paths as necessary
 
 const WorkflowContext = createContext();
 
 export const WorkflowProvider = ({ children }) => {
-  // Ingest our normalized relational database tables into state
-  const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
-  const [patients, setPatients] = useState(MOCK_PATIENTS);
-  const [triages, setTriages] = useState(MOCK_TRIAGES);
-  const [prescriptions, setPrescriptions] = useState(MOCK_PRESCRIPTIONS);
-  const [prescriptionItems, setPrescriptionItems] = useState(MOCK_PRESCRIPTION_ITEMS);
-  const [workloads, setWorkloads] = useState(MOCK_WORKLOADS);
+  const socket = useContext(SocketContext);
 
-  const { user } = useAuth();
-  const role = user?.role;
+  const [appointments, setAppointments] = useState([]);
+  const [triageQueue, setTriageQueue] = useState([]);
+  const [consultationQueue, setConsultationQueue] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [invoices, setInvoices] = useState([]);
 
-  const currentUser = useMemo(() => {
-    if (!user) return null;
+  const [loading, setLoading] = useState(true);
 
-    return MOCK_STAFF_PROFILES[user.role] || null;
-  }, [user]);
-  
+  /**
+   * Refresh entire hospital workflow
+   */
+const refreshWorkflow = useCallback(async () => {
+  try {
+    // 2. Fire your cleanly-abstracted service functions instead of raw strings!
+    const [
+      appointmentRes,
+      triageData,          // Directly returns response.data from your service
+      consultationData,    // Directly returns response.data from your service
+      prescriptionData,    // Directly returns response.data from your service
+      billingRes,
+    ] = await Promise.all([
+      axios.get("/api/appointments").catch(() => ({ data: [] })), 
+      getLiveQueue().catch(() => ({ queue: [] })),                 // 🛠️ Handled with auth & query params!
+      getAwaitingPatients().catch(() => ({ queue: [] })),           // 🛠️ Handled!
+      getPendingPrescriptions().catch(() => ({ prescriptions: [] })), // 🛠️ Handled!
+      axios.get("/api/billings").catch(() => ({ data: [] })),
+    ]);
 
-  // recept check in
-  const checkInPatient = (appointmentId) => {
-    setAppointments(prev => prev.map(app => 
-      app.appointment_id === appointmentId 
-        ? { ...app, workflow_step: 'AWAITING_TRIAGE' } 
-        : app
-    ));
-    triggerWorkloadRecalculation();
-  };
+    // 3. Set your state accurately
+    // Note: Since your services return response.data directly, handle fallbacks cleanly
+    setAppointments(appointmentRes.data || []);
+    setTriageQueue(triageData.queue || triageData);
+    setConsultationQueue(consultationData.queue || consultationData);
+    setPrescriptions(prescriptionData.prescriptions || prescriptionData);
+    setInvoices(billingRes.data || []);
 
+  } catch (err) {
+    console.error("Workflow synchronization failed:", err);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+  /**
+   * Initial Load
+   */
+  useEffect(() => {
+    refreshWorkflow();
+  }, [refreshWorkflow]);
 
-  // nurse
-  const submitNurseTriage = (appointmentId, patientId, vitalsData) => {
-    // Generate a fresh triage record matching your Triage typedef
-    const newTriage = {
-      triage_id: `TRG-${Date.now()}`,
-      appointment_id: appointmentId,
-      blood_pressure: vitalsData.blood_pressure, // "120/80"
-      temperature: parseFloat(vitalsData.temperature), // Celsius
-      heart_rate: parseInt(vitalsData.heart_rate), // bpm
-      weight: parseFloat(vitalsData.weight), // kg
-      urgency_level: parseInt(vitalsData.urgency_level), 
-      note: vitalsData.note || '',
-      created_at: new Date().toISOString()
+  /**
+   * Socket Listener
+   */
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleWorkflowChange = () => {
+      console.log(
+        "Workflow updated. Refreshing all dashboards..."
+      );
+
+      refreshWorkflow();
     };
 
-    // Inject into triage array
-    setTriages(prev => [...prev, newTriage]);
+    socket.on("workflow_changed", handleWorkflowChange);
 
-    // Advance the appointment status to Doctor consultation queue
-    setAppointments(prev => prev.map(app => 
-      app.appointment_id === appointmentId 
-        ? { ...app, workflow_step: 'AWAITING_CONSULTATION' } 
-        : app
-    ));
-    triggerWorkloadRecalculation();
-  };
-
-  // doctor
-  const submitDoctorConsultation = (appointmentId, patientId, doctorId, consultationData) => {
-    const newPrescriptionId = `PRC-${Date.now()}`;
-
-    // Create a new master prescription record
-    const newPrescription = {
-      prescription_id: newPrescriptionId,
-      appointment_id: appointmentId,
-      patient_id: patientId,
-      doctor_id: doctorId,
-      diagnosis: consultationData.diagnosis,
-      allergies: consultationData.allergies || 'None reported',
-      status: 'pending',
-      created_at: new Date().toISOString()
+    return () => {
+      socket.off(
+        "workflow_changed",
+        handleWorkflowChange
+      );
     };
+  }, [socket, refreshWorkflow]);
 
-    // Build the structural child array items
-    const newItems = consultationData.medications.map((med, index) => ({
-      item_id: `ITM-${Date.now()}-${index}`,
-      prescription_id: newPrescriptionId,
-      medication_name: med.name,
-      type: med.type || '',
-      instruction: med.instruction,
-      quantity: parseInt(med.quantity),
-      refills: parseInt(med.refills || 0),
-      is_dispensed: false
-    }));
+  /**
+   * Reception
+   */
+  const createNewAppointment = async (payload) => {
+    const response = await axios.post(
+      "/api/appointments",
+      payload
+    );
 
-    setPrescriptions(prev => [...prev, newPrescription]);
-    setPrescriptionItems(prev => [...prev, ...newItems]);
-
-    setAppointments(prev => prev.map(app => 
-      app.appointment_id === appointmentId 
-        ? { ...app, workflow_step: 'AWAITING_PHARMACY' } 
-        : app
-    ));
-    triggerWorkloadRecalculation();
+    return response.data;
   };
 
+  /**
+   * Nurse
+   */
+  const createTriageRecord = async (payload) => {
+    const response = await axios.post(
+      "/api/triage",
+      payload
+    );
 
-  // pha
-  const togglePrescriptionItemCheck = (itemId) => {
-    setPrescriptionItems(prev => prev.map(item => 
-      item.item_id === itemId ? { ...item, is_dispensed: !item.is_dispensed } : item
-    ));
+    return response.data;
   };
 
-  const dispenseMedications = (appointmentId, prescriptionId) => {
-    
-    setPrescriptions(prev => prev.map(p => 
-      p.prescription_id === prescriptionId ? { ...p, status: 'dispensed' } : p
-    ));
+  const updateTriageRecord = async (
+    appointmentId,
+    payload
+  ) => {
+    const response = await axios.put(
+      `/api/triage/${appointmentId}`,
+      payload
+    );
 
-    
-    setAppointments(prev => prev.map(app => 
-      app.appointment_id === appointmentId 
-        ? { ...app, workflow_step: 'AWAITING_CHECKOUT' } 
-        : app
-    ));
-    triggerWorkloadRecalculation();
+    return response.data;
   };
 
-  // recept-checkout
-  const finalizePatientCheckout = (appointmentId) => {
-    setAppointments(prev => prev.map(app => 
-      app.appointment_id === appointmentId 
-        ? { ...app, status: 'completed', workflow_step: 'COMPLETED' } 
-        : app
-    ));
-    triggerWorkloadRecalculation();
+  /**
+   * Doctor
+   */
+  const submitDoctorConsultation = async (
+    payload
+  ) => {
+    const response = await axios.post(
+      "/api/consultation",
+      payload
+    );
+
+    return response.data;
   };
 
-  
-  // admin dash
-  const triggerWorkloadRecalculation = () => {
-    setAppointments(currentApps => {
-      const waiting = currentApps.filter(a => a.workflow_step === 'WAITING').length;
-      const triage = currentApps.filter(a => a.workflow_step === 'AWAITING_TRIAGE').length;
-      const consultation = currentApps.filter(a => a.workflow_step === 'AWAITING_CONSULTATION').length;
-      const pharmacy = currentApps.filter(a => a.workflow_step === 'AWAITING_PHARMACY').length;
+  /**
+   * Pharmacist
+   */
+  const dispensePrescription = async (
+    prescriptionId
+  ) => {
+    const response = await axios.put(
+      `/api/prescriptions/${prescriptionId}/dispense`
+    );
 
-      setWorkloads([
-        { department_name: 'Reception Front Desk', load_percentage: Math.min(waiting * 6, 100), status_color: waiting > 10 ? 'bg-rose-600' : 'bg-amber-500' },
-        { department_name: 'Triage Nursing Core', load_percentage: Math.min(triage * 20, 100), status_color: triage > 3 ? 'bg-amber-500' : 'bg-emerald-500' },
-        { department_name: 'Outpatient Consultation', load_percentage: Math.min(consultation * 33, 100), status_color: consultation > 2 ? 'bg-rose-600' : 'bg-emerald-500' },
-        { department_name: 'Pharmacy Dispensary', load_percentage: Math.min(pharmacy * 50, 100), status_color: pharmacy > 1 ? 'bg-amber-500' : 'bg-emerald-500' }
-      ]);
-      return currentApps;
-    });
+    return response.data;
+  };
+
+  /**
+   * Billing
+   */
+  const issueBillPayment = async (
+    invoiceId,
+    payload = {}
+  ) => {
+    const response = await axios.patch(
+      `/api/billings/${invoiceId}/issue-payment`,
+      payload
+    );
+
+    return response.data;
   };
 
   return (
-    <WorkflowContext.Provider value={{
-      users: MOCK_USERS,
-      currentUser,          
-      patients,
-      appointments,
-      triages,
-      prescriptions,
-      prescriptionItems,
-      workloads,
-      checkInPatient,
-      submitNurseTriage,
-      submitDoctorConsultation,
-      togglePrescriptionItemCheck,
-      dispenseMedications,
-      finalizePatientCheckout
-    }}>
+    <WorkflowContext.Provider
+      value={{
+        loading,
+
+        appointments,
+        triageQueue,
+        consultationQueue,
+        prescriptions,
+        invoices,
+
+        refreshWorkflow,
+
+        createNewAppointment,
+        createTriageRecord,
+        updateTriageRecord,
+        submitDoctorConsultation,
+        dispensePrescription,
+        issueBillPayment,
+      }}
+    >
       {children}
     </WorkflowContext.Provider>
   );
 };
 
-export const useWorkflow = () => useContext(WorkflowContext);
+export const useWorkflow = () =>
+  useContext(WorkflowContext);

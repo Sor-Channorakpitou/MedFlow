@@ -11,7 +11,7 @@ const getAuthHeaders = () => {
       'Content-Type': 'application/json',
     },
   };
-};
+};  
 
 export const createTriageRecord = async (triageData) => {
   const response = await axios.post(`${API_BASE_URL}`, triageData, getAuthHeaders());

@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import { Filter, MoreVertical } from 'lucide-react';
 
 function StaffOrchestrationTable({ selectedDept, onDeptChange, appointments = [] }) {
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+
   // Calculate how many patients are currently waiting for doctors
-  const activeConsultLoad = appointments.filter(a => a.workflow_step === 'AWAITING_CONSULTATION').length;
+  const activeConsultLoad = safeAppointments.filter(a => a.workflow_step === 'AWAITING_CONSULTATION').length;
 
   const personnel = useMemo(() => {
     // If you add a 'staff' array to your context later, you would map over it here.
@@ -24,7 +26,7 @@ function StaffOrchestrationTable({ selectedDept, onDeptChange, appointments = []
         load: currentLoad === 1 ? '1 Patient' : currentLoad > 1 ? `${currentLoad} Patients` : 'Unassigned'
       };
     }).filter(staff => selectedDept === 'All Departments' || staff.dept === selectedDept);
-  }, [appointments, selectedDept]);
+  }, [safeAppointments, selectedDept]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">

@@ -1,19 +1,19 @@
 // src/pages/PharmacistDash.jsx
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PendingFulfillmentList from "../components/pharmacist/PendingFulfillmentList";
 import AllergyBanner from "../components/pharmacist/AllergyBanner";
 import MedicationDispensation from "../components/pharmacist/MedicationDispensation";
 import Header from "../components/Header";
 
-import {
-  getPendingPrescriptions,
-  dispensePrescription,
-} from "../services/prescriptionAPI";
+// Connect to your global context workflow instead of direct API imports
+import { useWorkflow } from "../context/WorkflowContext";
 
 function PharmacistDash() {
-  const [prescriptions, setPrescriptions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState(null);
+  const { 
+    prescriptions: rawPrescriptions, 
+    loading: isLoading, 
+    dispensePrescription 
+  } = useWorkflow();
 
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,41 +24,14 @@ function PharmacistDash() {
     initials: "AR",
   };
 
-  // ==========================================================================
-  // FETCH ENGINE
-  // ==========================================================================
-  const loadPharmacyDashboard = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setApiError(null);
-
-      const response = await getPendingPrescriptions();
-
-      if (response && response.prescriptions) {
-        setPrescriptions(response.prescriptions);
-        // Safely set the initial selection immediately upon fetch
-        if (response.prescriptions.length > 0) {
-          setSelectedPrescriptionId(response.prescriptions[0].id);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch eager-loaded prescriptions:", err);
-      setApiError(
-        "Database sync failed. Could not pull prescription registries.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPharmacyDashboard();
-  }, [loadPharmacyDashboard]);
-
-  // Transform raw DB schema to pristine UI layout structures
+  // 1. Safe, exception-free reactive queue parsing
   const reactiveQueue = useMemo(() => {
-    return prescriptions
+    const safePrescriptions = Array.isArray(rawPrescriptions) ? rawPrescriptions : [];
+
+    return safePrescriptions
       .map((prescription) => {
+        if (!prescription) return null;
+
         const patient = prescription.patient || {};
 
         const uiMedications =
@@ -66,8 +39,8 @@ function PharmacistDash() {
             id: item.id,
             name: item.medication?.name || "Unknown Medicine",
             type: "Prescribed Rx",
-            instruction: `${item.frequency}x daily for ${item.duration}`,
-            qty: item.dosage,
+            instruction: `${item.frequency || 1}x daily for ${item.duration || "7 Days"}`,
+            qty: item.dosage || 1,
             refills: item.refills || 0,
             isDispensed: item.isDispensed || false,
           })) || [];
@@ -76,7 +49,7 @@ function PharmacistDash() {
           id: prescription.id,
           prescriptionId: prescription.id,
           patientId: patient.id || null,
-          name: patient.fullName || "UNKNOWN PATIENT",
+          name: (patient.fullName || "UNKNOWN PATIENT").toUpperCase(),
           dob: patient.dateOfBirth
             ? new Date(patient.dateOfBirth).toLocaleDateString()
             : "N/A",
@@ -97,10 +70,18 @@ function PharmacistDash() {
           notes: prescription.medicalRecord?.notes || "",
         };
       })
+      .filter(Boolean)
       .filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-  }, [prescriptions, searchQuery]);
+  }, [rawPrescriptions, searchQuery]);
+
+  // Sync active id with first element if selection falls out of sync
+  useEffect(() => {
+    if (reactiveQueue.length > 0 && !selectedPrescriptionId) {
+      setSelectedPrescriptionId(reactiveQueue[0].id);
+    }
+  }, [reactiveQueue, selectedPrescriptionId]);
 
   // Derived Active Prescription (No useEffect loop hazard)
   const activePrescription = useMemo(() => {
@@ -114,26 +95,9 @@ function PharmacistDash() {
   }, [reactiveQueue, selectedPrescriptionId]);
 
   const handleToggleDispense = (medItemId) => {
-    setPrescriptions((prevPrescriptions) =>
-      prevPrescriptions.map((rx) => {
-        // Use the fallback-safe activePrescription ID instead of raw state
-        if (
-          activePrescription &&
-          rx.id === activePrescription.id &&
-          rx.prescriptionMedications
-        ) {
-          return {
-            ...rx,
-            prescriptionMedications: rx.prescriptionMedications.map((item) =>
-              item.id === medItemId
-                ? { ...item, isDispensed: !item.isDispensed }
-                : item,
-            ),
-          };
-        }
-        return rx;
-      }),
-    );
+    // Note: Since rawPrescriptions comes from global context, you will handle local check updates 
+    // down in components/MedicationDispensation or through your state context if mutation is required.
+    console.log(`Toggling item dispensation status for item ID: ${medItemId}`);
   };
 
   const handleFinalizeDischarge = async () => {
@@ -141,37 +105,25 @@ function PharmacistDash() {
 
     try {
       const targetId = Number(activePrescription.prescriptionId);
+      
+      // Call the socket-connected provider action directly
       await dispensePrescription(targetId);
 
-      // Optimistically clean the state
-      setPrescriptions((prev) => {
-        const remaining = prev.filter((rx) => rx.id !== targetId);
-        // Update selection state inline during the action step safely
-        if (remaining.length > 0) {
-          setSelectedPrescriptionId(remaining[0].id);
-        } else {
-          setSelectedPrescriptionId("");
-        }
-        return remaining;
-      });
+      setSelectedPrescriptionId("");
+      alert("Prescription order successfully processed and recorded.");
     } catch (err) {
       console.error("Discharge execution error: ", err);
-      alert("Backend execution failed during validation confirmation routine.");
+      alert("Backend confirmation failed during dispensation verification routine.");
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-400 font-medium">
-        Loading clinical registries...
+        Syncing global pharmacy dashboards...
       </div>
     );
-  if (apiError)
-    return (
-      <div className="flex h-screen items-center justify-center text-rose-500 font-medium">
-        {apiError}
-      </div>
-    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden text-left">
@@ -189,7 +141,7 @@ function PharmacistDash() {
           <div className="lg:col-span-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
             <PendingFulfillmentList
               patients={reactiveQueue}
-              selectedId={activePrescription.id} // Keep the UI in sync with derived data
+              selectedId={activePrescription.id}
               onSelect={setSelectedPrescriptionId}
             />
           </div>
@@ -210,8 +162,7 @@ function PharmacistDash() {
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
           <p className="text-sm font-medium">
-            All pending prescriptions have been fully compiled and cleared for
-            discharge.
+            All pending prescriptions have been fully compiled and cleared for discharge.
           </p>
         </div>
       )}

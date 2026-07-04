@@ -21,10 +21,12 @@ function AdminDash() {
   // METRICS PIPELINE: Calculate live real-time clinical statistics
   // ==========================================================================
   const liveMetrics = useMemo(() => {
-    const totalCount = appointments.length;
-    const criticalCount = appointments.filter(app => app.urgency_level === 'CRITICAL').length;
-    const waitingTriage = appointments.filter(app => app.workflow_step === 'AWAITING_TRIAGE').length;
-    const withDoctor = appointments.filter(app => app.workflow_step === 'AWAITING_CONSULTATION').length;
+    const safeAppointments = Array.isArray(appointments) ? appointments : [];
+
+    const totalCount = safeAppointments.length;
+    const criticalCount = safeAppointments.filter(app => app.urgency_level === 'CRITICAL').length;
+    const waitingTriage = safeAppointments.filter(app => app.workflow_step === 'AWAITING_TRIAGE').length;
+    const withDoctor = safeAppointments.filter(app => app.workflow_step === 'AWAITING_CONSULTATION').length;
 
     return {
       totalPatients: totalCount,

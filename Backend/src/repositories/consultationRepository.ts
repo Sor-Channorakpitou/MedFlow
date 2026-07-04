@@ -1,16 +1,22 @@
 import prisma from "../lib/prisma.js";
 
 export const findDoctorQueue = async () => {
-  return prisma.appointment.findMany({
+  return prisma.queue.findMany({
     where: {
-      status: "CONFIRMED"
+      stage: "DOCTOR",
+      status: "WAITING"
     },
     include: {
       patient: true,
-      triage: true
+      user: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
     },
     orderBy: {
-      createdAt: "asc"
+      queueNumber: "asc"
     }
   });
 };
@@ -45,6 +51,15 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
     const verifiedPatientId = appointmentExists.patientId;
 
+    const queue = await tx.queue.findUnique({
+    where:{
+        patientId: verifiedPatientId
+    }
+});
+
+if(!queue){
+    throw new Error("QUEUE_NOT_FOUND");
+}
 
     if (data.medications && data.medications.length > 0) {
       const uniqueMedIds = Array.from(
@@ -109,10 +124,16 @@ export const saveConsultation = async (data: any, doctorId: number) => {
     }
 
 
-    await tx.appointment.update({
-      where: { id: data.appointmentId },
-      data: { status: "COMPLETED" }
-    });
+   await tx.queue.update({
+    where: {
+        patientId: verifiedPatientId
+    },
+    data: {
+        stage: "PHARMACY",
+        status: "WAITING",
+        userId: null
+    }
+});
 
     return record;
   });

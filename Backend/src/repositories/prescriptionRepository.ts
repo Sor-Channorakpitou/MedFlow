@@ -121,13 +121,26 @@ export const executeDispenseTransaction = async (id: number) => {
       });
     }
 
-    return await tx.prescription.update({
-      where: {
-        id
-      },
-      data: {
-        status: "SENT"
-      }
-    });
+    const updatedPrescription = await tx.prescription.update({
+  where: {
+    id
+  },
+  data: {
+    status: "SENT"
+  }
+});
+
+await tx.queue.update({
+  where: {
+    patientId: prescription.patientId
+  },
+  data: {
+    stage: "COMPLETED",
+    status: "COMPLETED",
+    userId: null
+  }
+});
+
+return updatedPrescription;
   });
 };

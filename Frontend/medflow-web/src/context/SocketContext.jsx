@@ -1,8 +1,9 @@
-import { useContext, useEffect } from "react";
-import useAuth from "../hooks/useAuth";
-import { socket } from "../services/socket";
 
-export const SocketContext = useContext(null);
+import {useAuth} from "../hooks/useAuth";
+import { socket } from "../services/socket";
+import { createContext, useEffect } from "react";
+
+export const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();

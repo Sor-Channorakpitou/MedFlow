@@ -4,6 +4,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from ".
 import { findUserEmail } from "./userService.js";
 import { validatePassword } from "../utils/passwordValidator.js";
 import { toUserDTO } from "../utils/dataFormat.js";
+import crypto from 'crypto';
 
 export const loginUser = async (email: string, password: string) => {
     // Find user in DB
@@ -27,11 +28,12 @@ export const loginUser = async (email: string, password: string) => {
         username: user.name
     });
 
-    const refreshToken = generateRefreshToken({
-        id: user.id
-    });
+   const refreshToken = generateRefreshToken({
+        id: user.id,
+        nonce: crypto.randomUUID() 
+    }) as any ;
 
-    await prisma.$transaction([
+   await prisma.$transaction([
         prisma.refreshToken.deleteMany({ where: { userId: user.id } }),
         prisma.refreshToken.create({
             data: {
