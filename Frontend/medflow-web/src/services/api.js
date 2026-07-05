@@ -19,33 +19,56 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     const originalRequest = error.config;
 
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+//     if (error.response?.status === 401 && !originalRequest._retry) {
+//       originalRequest._retry = true;
 
-      try {
-        const res = await api.post("/auth/refresh");
+//       try {
+//         const res = await api.post("/auth/refresh");
 
-        const newAccessToken = res.data.accessToken;
-        setAccessToken(newAccessToken);
+//         const newAccessToken = res.data.accessToken;
+//         setAccessToken(newAccessToken);
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+//         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-        return api(originalRequest);
-      } catch (err) {
-        window.location.href = "/login";
-      } 
+//         return api(originalRequest);
+//       } catch (err) {
+//         window.location.href = "/login";
+//       } 
 
       
-    }
+//     }
 
+//     return Promise.reject(error);
+//   }
+// );
+
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const isAuthEndpoint =
+      original.url?.includes('/auth/refresh') || original.url?.includes('/auth/login');
+
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
+      original._retry = true;
+      try {
+        const res = await api.post('/auth/refresh'); // call endpoint directly, no import
+        setAccessToken(res.data.accessToken);
+        original.headers.Authorization = `Bearer ${res.data.accessToken}`;
+        return api(original);
+      } catch (refreshErr) {
+        setAccessToken(null); // just clear in-memory token
+        return Promise.reject(refreshErr); // let the caller / route guard handle UI, don't hard-redirect
+      }
+    }
     return Promise.reject(error);
   }
 );
-
 export default api;

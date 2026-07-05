@@ -1,7 +1,7 @@
 // components/receptionist/NewPatientRegistration.jsx
-import React, { useState } from 'react';
-import { UserPlus, ShieldCheck, HeartPulse, Terminal, User, Phone, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useWorkflow } from '../../context/WorkflowContext';
+import { useState } from 'react';
+import { UserPlus, HeartPulse, Terminal, User, Phone, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useWorkflow } from "../../hooks/useWorkflow";
 
 export default function NewPatientRegistration({ onCompleteRegistration }) {
   const { addPatientWithAppointment, patients = [] } = useWorkflow();

@@ -32,7 +32,11 @@ export const getHistory = async (req: Request, res: Response, next: NextFunction
 export const createConsultation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validatedData = logConsultationSchema.parse(req.body);
-    const doctorId = (req as any).user?.id || 1; 
+    const doctorId = (req as any).user?.id;
+    
+    if (!doctorId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: Doctor ID not found" });
+    }
 
     const result = await consultService.logNewConsultation(validatedData, doctorId);
     res.status(201).json({ success: true, message: "Consultation logged successfully", data: result });
@@ -52,6 +56,7 @@ export const updateExistingConsultation = async (req: Request, res: Response, ne
       validatedData.diagnosis,
       validatedData.notes || null
     );
+    req.app.get("io")?.emit("workflow_changed");  
     res.status(200).json({ success: true, message: "Consultation updated successfully", data: result });
   } catch (error) {
     next(error);

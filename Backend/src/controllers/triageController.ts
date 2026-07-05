@@ -1,5 +1,4 @@
 import type { Request, Response, NextFunction } from "express";
-import { TriageStatus } from "@prisma/client";
 import {
   createTriageRecord,
   getSortedQueue,
@@ -7,11 +6,7 @@ import {
   updateTriageRecord,
 } from "../services/triageService.js";
 
-export const addTriage = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const addTriage = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user?.id;
     const triage = await createTriageRecord({
@@ -19,22 +14,18 @@ export const addTriage = async (
       appointmentId: Number(req.body.appointmentId),
       userId: Number(userId),
     });
-    return res
-      .status(201)
-      .json({ message: "Triage registered successfully", triage });
+
+    req.app.get("io")?.emit("workflow_changed"); 
+
+    return res.status(201).json({ message: "Triage registered successfully", triage });
   } catch (error: any) {
     if (error.message === "APPOINTMENT_NOT_FOUND")
-      return res
-        .status(404)
-        .json({ message: "Appointment sequence not found" });
+      return res.status(404).json({ message: "Appointment sequence not found" });
     if (error.message === "TRIAGE_ALREADY_EXISTS")
-      return res
-        .status(409)
-        .json({ message: "Triage has already been saved for this session" });
+      return res.status(409).json({ message: "Triage has already been saved for this session" }); 
     next(error);
   }
 };
-
 export const getQueue = async (
   req: Request,
   res: Response,
@@ -104,6 +95,8 @@ export const updateTriage = async (
       urgencyLevel: urgencyLevel ?? undefined,
       note: note ?? null,
     });
+
+      req.app.get("io")?.emit("workflow_changed");
 
     return res.json({ message: "Triage record updated successfully", triage });
   } catch (error: any) {

@@ -116,6 +116,7 @@ export const getSortedQueue = async (
     },
     include: {
       patient: true,
+       appointment: true, 
       user: {
         select: {
           id: true,

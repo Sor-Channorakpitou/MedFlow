@@ -1,39 +1,27 @@
-import axios from 'axios';
+import api from './api';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-const API_BASE_URL = `${BASE_URL}/triage`;
+const RESOURCE_URL = '/triage'; 
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token'); 
-  return {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      'Content-Type': 'application/json',
-    },
-  };
-};  
 
 export const createTriageRecord = async (triageData) => {
-  const response = await axios.post(`${API_BASE_URL}`, triageData, getAuthHeaders());
+  const response = await api.post(RESOURCE_URL, triageData);
   return response.data;
 };
 
 export const getLiveQueue = async () => {
-  const response = await axios.get(`${API_BASE_URL}/queue?page=1&limit=50`, getAuthHeaders());
+  const response = await api.get(`${RESOURCE_URL}/queue`, {
+    params: { page: 1, limit: 50 },
+  });
   return response.data;
 };
 
-export const getTriageByAppointment = async (appointmentId) => { 
-  const response = await axios.get( `${API_BASE_URL}/${appointmentId}`, getAuthHeaders() );
-  return response.data; 
+export const getTriageByAppointment = async (appointmentId) => {
+  const response = await api.get(`${RESOURCE_URL}/${appointmentId}`);
+  return response.data;
 };
 
 export const updateTriageRecord = async (appointmentId, triageData) => {
-  const response = await axios.put(
-    `${API_BASE_URL}/${appointmentId}`, 
-    triageData, 
-    getAuthHeaders()
-  );
+  const response = await api.put(`${RESOURCE_URL}/${appointmentId}`, triageData);
   return response.data;
 };
 

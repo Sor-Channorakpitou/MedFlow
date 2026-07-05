@@ -9,7 +9,7 @@ import {
   TrendingUp, 
   AlertCircle 
 } from 'lucide-react';
-import { useWorkflow } from '../../context/WorkflowContext';
+import { useWorkflow } from '../../hooks/useWorkflow';
 
 export default function ReceptionSidePanel({ setSubView, stats }) {
   // Pull the emergency injector from your central brain if it exists

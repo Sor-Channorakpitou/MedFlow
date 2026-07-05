@@ -8,7 +8,7 @@ export const login = async (credentials) => {
 
 export const logout = async () => {
     const res = await api.post(`${API_BASE_URL}/logout`);
-    return res.data;
+    return res.data;    
 };
 
 export const getCurrentUser = async () => {

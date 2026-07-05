@@ -5,8 +5,7 @@ import AllergyBanner from "../components/pharmacist/AllergyBanner";
 import MedicationDispensation from "../components/pharmacist/MedicationDispensation";
 import Header from "../components/Header";
 
-// Connect to your global context workflow instead of direct API imports
-import { useWorkflow } from "../context/WorkflowContext";
+import { useWorkflow } from "../hooks/useWorkflow";
 
 function PharmacistDash() {
   const { 

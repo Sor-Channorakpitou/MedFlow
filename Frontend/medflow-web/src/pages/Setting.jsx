@@ -6,7 +6,7 @@ import ProfileSummary from "../components/settings/ProfileSummary";
 import NotificationSettings from "../components/settings/NotificationSettings";
 import { uploadProfileImage } from "../services/userAPI"
 import { Save } from "lucide-react";
-import { useWorkflow } from "../context/WorkflowContext"; // Import pipeline engine link
+
 import { useAuth } from "../hooks/useAuth";
 
 function Setting() {

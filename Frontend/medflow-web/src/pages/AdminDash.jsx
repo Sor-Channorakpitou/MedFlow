@@ -7,7 +7,7 @@ import StaffOrchestrationTable from '../components/admin/StaffOrchestrationTable
 import Header from '../components/Header';
 
 // Import your custom workflow tracking engine context
-import { useWorkflow } from '../context/WorkflowContext';
+import { useWorkflow } from '../hooks/useWorkflow'; // Updated import path to match your project structure
 import { Calendar, FileText } from 'lucide-react';
 
 function AdminDash() {

@@ -8,8 +8,7 @@ import SymptomsAndActions from "../components/doctor/SymptomsAndActions";
 import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry";
 import Header from "../components/Header";
 
-// Import your newly created global workflow hook
-import { useWorkflow } from "../context/WorkflowContext";
+import { useWorkflow } from "../hooks/useWorkflow";
 
 // Retained purely for history line queries matching user selections
 import { getPatientHistory } from "../services/consultationAPI";
@@ -195,7 +194,7 @@ function DoctorDash() {
       });
 
       const consultationPayload = {
-        appointmentId: Number(activeCase.id),
+        appointmentId: Number(activeCase.appointmentId), 
         patientId: Number(activeCase.patientId),
         diagnosis: soapNotes.assessment || "General Clinical Follow-up",
         notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),

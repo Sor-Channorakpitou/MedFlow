@@ -9,7 +9,7 @@ import {
   CircleDot,
 } from "lucide-react";
 
-import { useWorkflow } from "../context/WorkflowContext";
+import { useWorkflow } from "../hooks/useWorkflow";
 
 import MetricCard from "../components/nurse/MetricCard";
 import LiveQueue from "../components/nurse/LiveQueue";
