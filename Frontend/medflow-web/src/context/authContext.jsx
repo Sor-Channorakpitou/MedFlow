@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, use } from "react";
+import { useEffect, useState, createContext } from "react";
 import * as authAPI from "../services/authAPI";
 import { setAccessToken } from "../services/api";
 
@@ -11,8 +11,8 @@ export function AuthProvider({ children }) {
     const initializeAuth = async () => {
         try {
             const res = await authAPI.getCurrentUser();
-            setUser(res.user); 
-        } catch (err) { 
+            setUser(res.user);
+        } catch (err) {
             setUser(null);
         } finally {
             setLoading(false);
@@ -21,22 +21,22 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         initializeAuth();
-    }, []);
+    }, []); // bootstraps auth once on app load — no dependency on isAuthenticated, this IS what determines it
 
     const login = async (credentials) => {
         const res = await authAPI.login(credentials);
-        setAccessToken(res.accessToken); 
+        setAccessToken(res.accessToken);
 
         const userRes = await authAPI.getCurrentUser();
         setUser(userRes.user);
-        return userRes.user; 
+        return userRes.user;
     };
 
     const logout = async () => {
         try {
             await authAPI.logout();
         } finally {
-            setAccessToken(null); 
+            setAccessToken(null);
             setUser(null);
         }
     };
@@ -45,9 +45,8 @@ export function AuthProvider({ children }) {
         setUser((prev) => ({
             ...prev,
             ...updates,
-        }
-    ));
-};
+        }));
+    };
 
     const value = {
         user,

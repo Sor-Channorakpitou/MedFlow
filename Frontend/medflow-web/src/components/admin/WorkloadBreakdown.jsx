@@ -3,19 +3,21 @@ import React, { useMemo } from 'react';
 function WorkloadBreakdown({ appointments = [] }) {
   // Dynamically calculate workload breakdown based on the appointments array
   const departments = useMemo(() => {
-    const total = appointments.length || 1; // Prevent division by zero
+
+    const safeAppointments = Array.isArray(appointments) ? appointments : [];
+    const total = safeAppointments.length || 1; // Prevent division by zero
     
     // Simulating department routing based on urgency/reason if explicit departments aren't in the schema yet
-    const emergencyCount = appointments.filter(a => a.urgency_level === 'CRITICAL' || a.urgency_level === 'HIGH').length;
-    const generalCount = appointments.filter(a => a.urgency_level === 'MEDIUM' || a.urgency_level === 'LOW').length;
-    const otherCount = appointments.length - (emergencyCount + generalCount);
+    const emergencyCount = safeAppointments.filter(a => a.urgency_level === 'CRITICAL' || a.urgency_level === 'HIGH').length;
+    const generalCount = safeAppointments.filter(a => a.urgency_level === 'MEDIUM' || a.urgency_level === 'LOW').length;
+    const otherCount = safeAppointments.length - (emergencyCount + generalCount);
 
     return [
       { name: 'Emergency', load: Math.round((emergencyCount / total) * 100) || 0, color: 'bg-rose-600' },
       { name: 'General Ward', load: Math.round((generalCount / total) * 100) || 0, color: 'bg-teal-600' },
       { name: 'Specialists', load: Math.round((otherCount / total) * 100) || 0, color: 'bg-blue-600' },
       // Added a fixed tracker for visual consistency
-      { name: 'Radiology', load: appointments.length > 0 ? 15 : 0, color: 'bg-indigo-500' }, 
+      { name: 'Radiology', load: safeAppointments.length > 0 ? 15 : 0, color: 'bg-indigo-500' }, 
     ].sort((a, b) => b.load - a.load); // Auto-sort highest load to the top
   }, [appointments]);
 

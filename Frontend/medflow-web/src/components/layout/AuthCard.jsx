@@ -18,18 +18,29 @@ export default function AuthCard() {
     setError("");
     
     try {
+      // 1. Authenticate and set tokens
       await login({ email, password });
     
+      // 2. Fetch the logged-in user profile
       const res = await getCurrentUser();
-      console.log(res)
-      const role = res?.user?.role.name;
+      console.log("User retrieved successfully:", res);
+      
+      const role = res?.user?.role?.name;
 
-      navigate(`/${role.toLowerCase()}`);
+      if (role) {
+        // 3. Clear any remaining login errors before moving
+        setError("");
+        // 4. Clean navigate to the dashboard
+        navigate(`/${role.toLowerCase()}`, { replace: true });
+      } else {
+        setError("User role not found.");
+      }
+
     } catch (err) { 
-      console.error(err); 
-    } 
-      finally { 
-        setLoading(false); 
+      console.error("Login failed:", err);
+      setError(err.message || "Invalid credentials");
+    } finally { 
+      setLoading(false); 
     } 
   };
 

@@ -43,7 +43,7 @@ function AnalyticsMetrics({ liveStats = {} }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {metrics.map((m, idx) => (
         <div key={idx} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between relative overflow-hidden">
           <div className="flex justify-between items-start">
