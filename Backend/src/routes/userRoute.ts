@@ -1,6 +1,6 @@
 import express from "express";
 import { adminResetPasswordUserById, createUser, deactivateUserById, deleteUserById,
-getAllUsers, getUserById, updateUserById, uploadProfileImage } from "../controllers/userController.js";
+getAllUsers, getUserById, updateUserById, uploadProfileImage, activateUserById } from "../controllers/userController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { authorize } from "../middlewares/roleMiddleware.js";
 import upload from "../middlewares/upload.js";
@@ -81,7 +81,7 @@ router.post('/', authenticate, authorize(["ADMIN"]), createUser);
 
 /**
  * @swagger
- * /users/:id:
+ * /users/{id}:
  *   patch:
  *     summary: Update user information
  *     description: Updates selected fields of an existing user. Admin only.
@@ -118,7 +118,7 @@ router.patch('/:id', authenticate, authorize(["ADMIN"]), updateUserById);
 
 /**
  * @swagger
- * /users/:id:
+ * /users/{id}:
  *   delete:
  *     summary: Delete a user
  *     description: Permanently deletes a user account. Admin only.
@@ -147,10 +147,10 @@ router.delete('/:id', authenticate, authorize(["ADMIN"]), deleteUserById);
 
 /**
  * @swagger
- * /users/:id/deactivate:
+ * /users/{id}/deactivate:
  *   post:
  *     summary: Deactivate a user
- *     description: Deactivates a user account without deleting it. Admin only.
+ *     description: Disables a user account without deleting it. Admin only.
  *     tags:
  *       - Users
  *     security:
@@ -159,9 +159,9 @@ router.delete('/:id', authenticate, authorize(["ADMIN"]), deleteUserById);
  *       - in: path
  *         name: id
  *         required: true
- *         description: User ID
  *         schema:
  *           type: integer
+ *         description: User ID
  *     responses:
  *       200:
  *         description: User deactivated successfully
@@ -176,45 +176,30 @@ router.post('/:id/deactivate', authenticate, authorize(["ADMIN"]), deactivateUse
 
 /**
  * @swagger
- * /users/:id/reset-password:
- *   put:
- *     summary: Reset a user's password
- *     description: Resets the password of a specific user. Admin only.
+ * /users/profile/upload:
+ *   post:
+ *     summary: Upload user profile image
  *     tags:
  *       - Users
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: User ID
- *         schema:
- *           type: integer
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - newPassword
  *             properties:
- *               newPassword:
+ *               image:
  *                 type: string
- *                 minLength: 8
- *                 example: NewPassword123!
+ *                 format: binary
  *     responses:
  *       200:
- *         description: Password reset successfully
+ *         description: Profile image uploaded successfully
  *       400:
- *         description: Invalid password
+ *         description: Invalid file
  *       401:
  *         description: Unauthorized
- *       403:
- *         description: Forbidden
- *       404:
- *         description: User not found
  */
 router.put('/:id/reset-password', authenticate, authorize(["ADMIN"]), adminResetPasswordUserById);
 
@@ -242,5 +227,34 @@ router.put('/:id/reset-password', authenticate, authorize(["ADMIN"]), adminReset
  *         description: Image uploaded successfully
  */
 router.post('/profile/upload', authenticate, upload.single("image"), uploadProfileImage);
+
+/**
+ * @swagger
+ * /users/{id}/activate:
+ *   post:
+ *     summary: Activate a user
+ *     description: Reactivates a deactivated user account. Admin only.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User activated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: User not found
+ */
+router.post('/:id/activate', authenticate, authorize(["ADMIN"]), activateUserById);
 
 export default router;

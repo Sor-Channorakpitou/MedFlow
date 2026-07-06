@@ -34,3 +34,20 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+function shutdown(callback?: () => void) {
+    console.log("Shutting down gracefully...");
+    io.close(() => {
+        server.close(() => {
+            if (callback) callback();
+            else process.exit(0);
+        });
+    });
+    setTimeout(() => process.exit(1), 3000);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+process.once("SIGUSR2", () => {
+    shutdown(() => process.kill(process.pid, "SIGUSR2"));
+});

@@ -1,8 +1,8 @@
-//SocketContext.jsx
-import { useEffect } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { createContext, useEffect } from "react";
+import  { useAuth } from "../hooks/useAuth";
 import { socket } from "../services/socket";
-import { SocketContext } from "./SocketContextCore"; // 👈 Uses the fixed core context
+
+export const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();
