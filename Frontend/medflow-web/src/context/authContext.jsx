@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
         try {
             const res = await authAPI.getCurrentUser();
             setUser(res.user); 
-        } catch (err) {
+        } catch (err) { 
             setUser(null);
         } finally {
             setLoading(false);
