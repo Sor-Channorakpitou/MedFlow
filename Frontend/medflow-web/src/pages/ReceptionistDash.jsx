@@ -6,7 +6,7 @@ import PatientCheckout from '../components/receptionist/PatientCheckout';
 import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
 import Header from '../components/Header';
 
-import { useWorkflow } from '../hooks/useWorkflow'; // Updated import path to match your project structure
+import { useWorkflow } from '../hooks/useWorkflow';
 
 function ReceptionistDash() {
   const { 
@@ -27,9 +27,6 @@ function ReceptionistDash() {
     initials: "DM",
   };
 
-// ==========================================================================
-  // DATA JOIN & SORTING ENGINE: Only Show Awaiting Check-In ('WAITING')
-  // ==========================================================================
   const activeAppointmentsList = useMemo(() => {
     const getPriorityWeight = (reasonText) => {
       if (!reasonText) return 1;

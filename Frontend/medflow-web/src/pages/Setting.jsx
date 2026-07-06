@@ -1,5 +1,5 @@
 // src/pages/Setting.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import SettingTabs from "../components/settings/SettingTabs";
 import ProfileForm from "../components/settings/ProfileForm";
 import ProfileSummary from "../components/settings/ProfileSummary";

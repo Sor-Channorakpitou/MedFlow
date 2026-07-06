@@ -5,13 +5,12 @@ export const logConsultationSchema = z.object({
   patientId: z.number().int().positive(),
   diagnosis: z.string().min(1, "Diagnosis text is required"),
   notes: z.string().optional().nullable(),
-  
-  // Optional array containing medications prescribed during the session
   medications: z.array(
     z.object({
       medicationId: z.number().int().positive(),
-      dosage: z.number().int().positive(),
-      frequency: z.number().int().positive(),
+
+      dosage: z.preprocess((val) => (val ? Number(val) : 0), z.number().int().nonnegative()),
+      frequency: z.preprocess((val) => (val ? Number(val) : 1), z.number().int().positive()),
       duration: z.string().min(1, "Duration string is required")
     })
   ).optional()

@@ -4,7 +4,7 @@ import prisma from "../lib/prisma.js";
 export const findPendingPrescriptions = async () => {
   return await prisma.prescription.findMany({
     where: {
-      status: "PENDING"
+      status: "PENDING",
     },
     include: {
       patient: {
@@ -12,33 +12,33 @@ export const findPendingPrescriptions = async () => {
           id: true,
           fullName: true,
           phone: true,
-          dateOfBirth: true
-        }
+          dateOfBirth: true,
+        },
       },
 
       user: {
         select: {
-          name: true
-        }
+          name: true,
+        },
       },
 
       medicalRecord: {
         select: {
           diagnosis: true,
-          notes: true
-        }
+          notes: true,
+        },
       },
 
       prescriptionMedications: {
         include: {
-          medication: true
-        }
-      }
+          medication: true,
+        },
+      },
     },
 
     orderBy: {
-      createdAt: "asc"
-    }
+      createdAt: "asc",
+    },
   });
 };
 
@@ -46,39 +46,38 @@ export const findPendingPrescriptions = async () => {
 export const findPrescriptionById = async (id: number) => {
   return await prisma.prescription.findUnique({
     where: {
-      id
+      id,
     },
     include: {
       patient: true,
       user: {
         select: {
-          name: true
-        }
+          name: true,
+        },
       },
       medicalRecord: {
         select: {
           diagnosis: true,
-          notes: true
-        }
+          notes: true,
+        },
       },
       prescriptionMedications: {
         include: {
-          medication: true
-        }
-      }
-    }
+          medication: true,
+        },
+      },
+    },
   });
 };
 
 // 3. Dispense prescription
 export const executeDispenseTransaction = async (id: number) => {
   return await prisma.$transaction(async (tx) => {
-
     const prescription = await tx.prescription.findUnique({
       where: { id },
       include: {
-        prescriptionMedications: true
-      }
+        prescriptionMedications: true,
+      },
     });
 
     if (!prescription) {
@@ -90,57 +89,50 @@ export const executeDispenseTransaction = async (id: number) => {
     }
 
     for (const item of prescription.prescriptionMedications) {
-
       const medication = await tx.medication.findUnique({
         where: {
-          id: item.medicationId
-        }
+          id: item.medicationId,
+        },
       });
 
       if (!medication) {
-        throw new Error(
-          `Medication ID ${item.medicationId} does not exist.`
-        );
+        throw new Error(`Medication ID ${item.medicationId} does not exist.`);
       }
 
       if (medication.stockQuantity < item.dosage) {
-        throw new Error(
-          `Insufficient stock for ${medication.name}.`
-        );
+        throw new Error(`Insufficient stock for ${medication.name}.`);
       }
 
       await tx.medication.update({
         where: {
-          id: item.medicationId
+          id: item.medicationId,
         },
         data: {
           stockQuantity: {
-            decrement: item.dosage
-          }
-        }
+            decrement: item.dosage,
+          },
+        },
       });
     }
 
     const updatedPrescription = await tx.prescription.update({
-  where: {
-    id
-  },
-  data: {
-    status: "SENT"
-  }
-});
+      where: { id },
+      data: { status: "SENT" },
+    });
 
-await tx.queue.update({
-  where: {
-    patientId: prescription.patientId
-  },
-  data: {
-    stage: "COMPLETED",
-    status: "COMPLETED",
-    userId: null
-  }
-});
+    await tx.queue.update({
+      where: { appointmentId: prescription.appointmentId },
+      data: {
+        stage: "BILLING",
+        status: "WAITING",
+      },
+    });
 
-return updatedPrescription;
+    await tx.queue.updateMany({
+      where: { patientId: prescription.patientId },
+      data: { stage: "COMPLETED", status: "COMPLETED", userId: null },
+    });
+
+    return updatedPrescription;
   });
 };

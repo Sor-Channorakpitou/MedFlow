@@ -96,54 +96,53 @@ function NurseDash() {
     initials: "SJ",
   };
 
-const reactiveQueue = useMemo(() => {
+  const reactiveQueue = useMemo(() => {
+    const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
+    return safeQueue.map((queue) => {
+      const patient = queue.patient || queue.Patient || {};
+      const triage = queue.triage || queue.Triage || null;
+      const appointment = queue.appointment || queue.Appointment || {};
+      const birthYear = patient.dateOfBirth
+        ? new Date(patient.dateOfBirth).getFullYear()
+        : 1990;
 
-  const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
-  return safeQueue.map((queue) => {
-  const patient = queue.patient || queue.Patient || {};
-    const triage = queue.triage || queue.Triage || null;
-    const appointment = queue.appointment || queue.Appointment || {};
-    const birthYear = patient.dateOfBirth
-      ? new Date(patient.dateOfBirth).getFullYear()
-      : 1990;
+      const currentYear = new Date().getFullYear();
 
-    const currentYear = new Date().getFullYear();
+      return {
+        id: queue.id,
+        queueId: queue.id,
+        appointmentId: appointment.id,
+        patientId: patient.id,
 
-    return {
-      id: queue.id,
-      queueId: queue.id,
-      appointmentId: appointment.id,
-      patientId: patient.id,
+        name: patient.fullName.toUpperCase(),
 
-      name: patient.fullName.toUpperCase(),
+        age: currentYear - birthYear,
 
-      age: currentYear - birthYear,
+        gender: patient.gender === "MALE" ? "M" : "F",
 
-      gender: patient.gender === "MALE" ? "M" : "F",
+        arrival: new Date(queue.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
 
-      arrival: new Date(queue.createdAt).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+        wait: queue.status,
+        stage: queue.stage,
 
-      wait: queue.status,
-      stage: queue.stage,
+        urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
 
-      urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
+        vitals: {
+          bpSys: triage?.bloodPressure?.split("/")[0] || "120",
+          bpDia: triage?.bloodPressure?.split("/")[1] || "80",
+          hr: String(triage?.heartRate ?? "80"),
+          temp: String(triage?.temperature ?? "37"),
+          weight: String(triage?.weight ?? "70"),
+          spo2: String(triage?.spo2 ?? "98"),
+        },
 
-      vitals: {
-        bpSys: triage?.bloodPressure?.split("/")[0] || "120",
-        bpDia: triage?.bloodPressure?.split("/")[1] || "80",
-        hr: String(triage?.heartRate ?? "80"),
-        temp: String(triage?.temperature ?? "37"),
-        weight: String(triage?.weight ?? "70"),
-        spo2: String(triage?.spo2 ?? "98"),
-      },
-
-      notes: triage?.note || "",
-    };
-  });
-}, [rawQueue]);
+        notes: triage?.note || "",
+      };
+    });
+  }, [rawQueue]);
 
   useEffect(() => {
     if (reactiveQueue.length > 0) {
@@ -211,6 +210,8 @@ const reactiveQueue = useMemo(() => {
     setTemp(patient.vitals.temp);
     setWeight(patient.vitals.weight);
     setSpo2(patient.vitals?.spo2 || "98");
+
+    console.log("Selected patient:", patient);
   };
 
   const handleMoveToDoctor = async () => {
@@ -336,22 +337,22 @@ const reactiveQueue = useMemo(() => {
           <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm break-words">
             <div className="flex-1 min-h-0 overflow-y-auto">
               <ActiveTriagePanel
-                selectedPatient={selectedPatient}
-                urgencyLevel={urgencyLevel}
-                setUrgencyLevel={setUrgencyLevel}
-                vitals={{ bp, hr, temp, weight, spo2 }}
-                setBp={setBp}
-                setHr={setHr}
-                setTemp={setTemp}
-                setWeight={setWeight}
-                setSpo2={setSpo2}
-                bpStatus={activeBpStatus}
-                notes={notes}
-                setNotes={setNotes}
-                onMoveToDoctor={handleMoveToDoctor}
-                isSubmitting={isSubmitting}
-                urgencyMeta={URGENCY_META}
-              />
+    selectedPatient={selectedPatient}
+    urgencyLevel={urgencyLevel}
+    setUrgencyLevel={setUrgencyLevel}
+    vitals={{ bp, hr, temp, weight, spo2 }}
+    setBp={setBp}
+    setHr={setHr}
+    setTemp={setTemp}
+    setWeight={setWeight}
+    setSpo2={setSpo2}
+    bpStatus={activeBpStatus}
+    notes={notes}
+    setNotes={setNotes}
+    onMoveToDoctor={handleMoveToDoctor}
+    isSubmitting={isSubmitting}
+    urgencyMeta={URGENCY_META}
+  />
             </div>
             <StationLogs logs={logs} />
           </div>

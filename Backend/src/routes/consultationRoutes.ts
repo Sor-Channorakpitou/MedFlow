@@ -186,7 +186,7 @@ router.get("/history/:patientId", authenticate, authorize(["ADMIN", "DOCTOR"]), 
  *       401:
  *         description: Unauthorized
  */
-router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]), consultController.createConsultation, emitWorkflowChange);
+router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]), emitWorkflowChange, consultController.createConsultation);
 
 /**
  * @swagger
@@ -227,6 +227,6 @@ router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]), consultController.
  *       404:
  *         description: Medical record tied to this appointment not found
  */
-router.put("/:appointmentId", authenticate, authorize(["ADMIN","DOCTOR"]), consultController.updateExistingConsultation, emitWorkflowChange);
+router.put("/:appointmentId", authenticate, authorize(["ADMIN","DOCTOR"]), emitWorkflowChange, consultController.updateExistingConsultation);
 
 export default router;

@@ -12,12 +12,13 @@ import { useWorkflow } from "../hooks/useWorkflow";
 
 // Retained purely for history line queries matching user selections
 import { getPatientHistory } from "../services/consultationAPI";
+import { getAllMedications } from "../services/medicationAPI";
 
 function DoctorDash() {
-  const { 
-    consultationQueue: rawQueue, 
-    loading: isLoading, 
-    submitDoctorConsultation 
+  const {
+    consultationQueue: rawQueue,
+    loading: isLoading,
+    submitDoctorConsultation,
   } = useWorkflow();
 
   const [activeQueueId, setActiveQueueId] = useState("");
@@ -25,6 +26,8 @@ function DoctorDash() {
   const [patientHistory, setPatientHistory] = useState([]);
 
   const [prescribedMeds, setPrescribedMeds] = useState([]);
+  const [allMedications, setAllMedications] = useState([]);
+
   const [soapNotes, setSoapNotes] = useState({
     subjective: "",
     objective: "",
@@ -45,7 +48,6 @@ function DoctorDash() {
     initials: "AT",
   };
 
-  // 1. Safe, exception-free reactive queue parsing
   const reactiveQueue = useMemo(() => {
     const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
 
@@ -53,7 +55,6 @@ function DoctorDash() {
       .map((item) => {
         if (!item) return null;
 
-        // Support both flat shapes and nested configurations
         const appointment = item.appointment || item;
         const patient = item.patient || appointment?.patient;
         const triage = item.triage || appointment?.triage;
@@ -68,11 +69,15 @@ function DoctorDash() {
 
         return {
           id: item.id,
+          appointmentId: item.appointmentId || appointment?.id,
           patientId: patient.id || item.patientId,
           name: (patient.fullName || "Unknown Patient").toUpperCase(),
           type: "WAITING",
-          time: item.createdAt 
-            ? new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          time: item.createdAt
+            ? new Date(item.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
             : "--:--",
           reason: item.reason || appointment?.reason || "General Consultation",
           age: `${currentYear - birthYear} Y.O.`,
@@ -80,8 +85,8 @@ function DoctorDash() {
             patient.gender === "MALE"
               ? "Male"
               : patient.gender === "FEMALE"
-              ? "Female"
-              : "Unknown",
+                ? "Female"
+                : "Unknown",
           room: "Exam Room 3",
           vitals: {
             bloodPressure: triage?.bloodPressure || "",
@@ -95,7 +100,7 @@ function DoctorDash() {
       })
       .filter(Boolean)
       .filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
   }, [rawQueue, searchQuery]);
 
@@ -113,6 +118,19 @@ function DoctorDash() {
       null
     );
   }, [reactiveQueue, activeQueueId]);
+
+  useEffect(() => {
+    const loadMedications = async () => {
+      try {
+        const data = await getAllMedications();
+        setAllMedications(data);
+      } catch (err) {
+        console.error("Error loading medication list:", err);
+      }
+    };
+
+    loadMedications();
+  }, []);
 
   // 2. Fixed cross-contamination workspace flush
   useEffect(() => {
@@ -144,7 +162,6 @@ function DoctorDash() {
     getPatientHistory(activeCase.patientId)
       .then((res) => setPatientHistory(res?.history || res || []))
       .catch(() => setPatientHistory([]));
-
   }, [activeQueueId, activeCase?.id]); // Track activeCase change cleanly
 
   const handleSoapChange = (field, value) => {
@@ -156,20 +173,27 @@ function DoctorDash() {
       prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s)),
     );
   };
-
   const handleAddMedication = (newMed) => {
+    // newMed MUST come from a dropdown of real medications from your database
+    if (!newMed.id && !newMed.medicationId) {
+      alert("Please select a valid medication from the database list.");
+      return;
+    }
+
+    const incomingMedId = Number(newMed.medicationId || newMed.id);
+
     setPrescribedMeds((prev) => [
       ...prev,
       {
-        medicationId: Number(newMed.medicationId || newMed.id || 1),
+        medicationId: incomingMedId,
+        // We keep the name in React just to display it on the doctor's screen
+        name: newMed.name || newMed.medication_name,
         dosage: Number(newMed.dosage || 1),
         frequency: Number(newMed.frequency || 1),
         duration: String(newMed.duration || newMed.instruction || "7 Days"),
-        name: newMed.name || newMed.medication_name || "Unknown Drug",
       },
     ]);
   };
-
   const handleFinishSession = async () => {
     if (!activeCase) return;
 
@@ -178,34 +202,27 @@ function DoctorDash() {
         .filter((s) => s.checked)
         .map((s) => s.label);
 
-      const targetMedications = prescribedMeds.map((m) => {
-        const cleanNumber = (val, fallback = 1) => {
-          if (val === null || val === undefined || val === "") return fallback;
-          const parsed = Number(val);
-          return isNaN(parsed) ? fallback : parsed;
-        };
-
-        return {
-          medicationId: cleanNumber(m.medicationId || m.id, 1),
-          dosage: cleanNumber(m.dosage, 1),
-          frequency: cleanNumber(m.frequency, 1),
-          duration: m.duration || m.instruction || "7 Days",
-        };
-      });
-
+      // Format strictly for the backend schema
+      const targetMedications = prescribedMeds.map((m) => ({
+        medicationId: Number(m.medicationId),
+        dosage: Number(m.dosage), // Force Number
+        frequency: Number(m.frequency), // Force Number
+        duration: String(m.duration),
+      }));
       const consultationPayload = {
-        appointmentId: Number(activeCase.appointmentId), 
+        appointmentId: Number(activeCase.appointmentId),
         patientId: Number(activeCase.patientId),
-        diagnosis: soapNotes.assessment || "General Clinical Follow-up",
-        notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),
-        symptoms: activeCheckedSymptoms,
-        medications: targetMedications.length > 0 ? targetMedications : [],
+        diagnosis: soapNotes.assessment,
+        notes: soapNotes.notes,
+        medications: targetMedications,
       };
 
       await submitDoctorConsultation(consultationPayload);
 
       setActiveQueueId("");
-      alert("Consultation finalized successfully. Case dispatched to pharmacy.");
+      alert(
+        "Consultation finalized successfully. Case dispatched to pharmacy.",
+      );
     } catch (err) {
       console.error("Consultation submission crash:", err);
       alert("Failed to commit case records. Check network configurations.");
@@ -256,7 +273,7 @@ function DoctorDash() {
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm shrink-0">
                 <SoapNotesForm
                   className="h-full"
-                  data={soapNotes} 
+                  data={soapNotes}
                   onChange={handleSoapChange}
                 />
               </div>
@@ -270,7 +287,10 @@ function DoctorDash() {
                   />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full">
-                  <PrescriptionOrderEntry onAdd={handleAddMedication} />
+                  <PrescriptionOrderEntry
+                    onAdd={handleAddMedication}
+                    allMedications={allMedications}
+                  />
                 </div>
               </div>
             </div>
@@ -279,7 +299,8 @@ function DoctorDash() {
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
           <p className="text-sm font-medium">
-            All outpatient medical consultations have been concluded for this session slice.
+            All outpatient medical consultations have been concluded for this
+            session slice.
           </p>
         </div>
       )}

@@ -23,8 +23,8 @@ export const WorkflowProvider = ({ children }) => {
     try {
       const [appointmentRes, triageData, consultationData, prescriptionData, billingRes] = await Promise.all([
         axios.get("/api/appointments").catch(() => ({ data: [] })), 
-        getLiveQueue().catch(() => ({ queue: [] })),                 
-        getAwaitingPatients().catch(() => ({ queue: [] })),           
+        getLiveQueue().catch(() => ({ queue: [] })),
+        getAwaitingPatients().catch(() => ({ queue: [] })),
         getPendingPrescriptions().catch(() => ({ prescriptions: [] })), 
         axios.get("/api/billings").catch(() => ({ data: [] })),
       ]);

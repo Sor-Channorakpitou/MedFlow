@@ -34,6 +34,7 @@ export const createConsultation = async (req: Request, res: Response, next: Next
     const validatedData = logConsultationSchema.parse(req.body);
     const doctorId = (req as any).user?.id;
     
+    
     if (!doctorId) {
       return res.status(401).json({ success: false, message: "Unauthorized: Doctor ID not found" });
     }
