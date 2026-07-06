@@ -53,3 +53,8 @@ export const uploadProfileImage = async (file) => {
 
     return res.data;
 };
+
+export const activateUser = async (id) => {
+    const res = await api.post(`${API_BASE_URL}/${id}/activate`);
+    return res.data;
+};

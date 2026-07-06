@@ -24,6 +24,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    if (originalRequest.url === "/auth/refresh") {
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -37,7 +44,11 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (err) {
-        window.location.href = "/login";
+        setAccessToken(null);
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
       }
     }
 
