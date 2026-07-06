@@ -49,7 +49,7 @@ function VitalInputCard({
       <div className="flex items-baseline font-mono">
         <input
           type="text"
-          value={value || ""}
+          value={value !== undefined && value !== null ? String(value) : ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="w-full text-lg font-extrabold text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-300"
@@ -88,6 +88,7 @@ export default function ActiveTriagePanel({
   isSubmitting,
   urgencyMeta,
 }) {
+  console.log("Panel rendered with:", { selectedPatient, vitals });
   return (
     <div className="flex flex-col h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* 1. Header (STAYS FIXED) */}
@@ -115,9 +116,7 @@ export default function ActiveTriagePanel({
         </p>
       </div>
 
-      {/* 3. Scrollable Work Area (Inputs & Config fields only) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-left min-h-0 bg-white">
-        {/* Urgency Selection Matrix */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block ml-0.5">
             Assign Urgency Priority Level

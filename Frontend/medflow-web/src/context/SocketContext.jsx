@@ -1,28 +1,34 @@
-import { useContext, useEffect } from "react";
-import useAuth from "../hooks/useAuth";
+//SocketContext.jsx
+import { useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { socket } from "../services/socket";
-
-export const SocketContext = useContext(null);
+import { SocketContext } from "./SocketContextCore"; // 👈 Uses the fixed core context
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();
+    const userId = user?.id;
+    const roleName = user?.role?.name;
 
     useEffect(() => {
-        if (!user) {
-            socket.disconnect();
+        if (!userId) {
+            if (socket.connected) socket.disconnect();
             return;
         }
 
-        socket.connect();
-
-        socket.emit("join-user", user.id);
-        socket.emit("join-role", user.role.name);
-
-        return () => {
-            socket.disconnect();
+        const onConnect = () => {
+            socket.emit("join-user", userId);
+            if (roleName) socket.emit("join-role", roleName);
         };
 
-    }, [user]);
+        socket.on("connect", onConnect);
+        if (socket.connected) onConnect();
+        else socket.connect();
+
+        return () => {
+            socket.off("connect", onConnect);
+            socket.disconnect();
+        };
+    }, [userId, roleName]);
 
     return (
         <SocketContext.Provider value={socket}>
@@ -30,3 +36,5 @@ export function SocketProvider({ children }) {
         </SocketContext.Provider>
     );
 }
+
+export default SocketProvider;

@@ -4,7 +4,7 @@ import {
   ListOrdered, User, DollarSign, Activity, CreditCard, 
   FileText, Printer, ChevronDown, CheckCircle2, Clock 
 } from 'lucide-react';
-import { useWorkflow } from '../../context/WorkflowContext';
+import { useWorkflow } from '../../hooks/useWorkFlow';
 
 export default function PatientCheckout({ selectedAppId, onSelectAppId, onFinalizeCheckout }) {
   const { appointments = [], patients = [], prescriptions = [] } = useWorkflow();

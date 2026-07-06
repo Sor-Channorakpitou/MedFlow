@@ -1,12 +1,12 @@
 // src/pages/Setting.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import SettingTabs from "../components/settings/SettingTabs";
 import ProfileForm from "../components/settings/ProfileForm";
 import ProfileSummary from "../components/settings/ProfileSummary";
 import NotificationSettings from "../components/settings/NotificationSettings";
 import { uploadProfileImage } from "../services/userAPI"
 import { Save } from "lucide-react";
-import { useWorkflow } from "../context/WorkflowContext"; // Import pipeline engine link
+
 import { useAuth } from "../hooks/useAuth";
 
 function Setting() {
