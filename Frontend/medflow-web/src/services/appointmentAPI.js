@@ -1,0 +1,33 @@
+// services/appointmentAPI.js
+import api from "./api";
+const API_BASE_URL = '/appointments';
+
+export const getAllAppointments = async () => {
+    const res = await api.get(`${API_BASE_URL}`);
+    return res.data;
+};
+
+export const getAppointmentById = async (id) => {
+    const res = await api.get(`${API_BASE_URL}/${id}`);
+    return res.data;
+};
+
+export const createAppointment = async (appointmentData) => {
+    const res = await api.post(`${API_BASE_URL}`, appointmentData);
+    return res.data;
+};
+
+export const updateAppointment = async (id, updates) => {
+    const res = await api.patch(`${API_BASE_URL}/${id}`, updates);
+    return res.data;
+};
+
+export const cancelAppointment = async (id) => {
+    const res = await api.patch(`${API_BASE_URL}/${id}/cancel`);
+    return res.data;
+};
+
+export const assignDoctor = async (id, doctorId) => {
+    const res = await api.patch(`${API_BASE_URL}/${id}/assign-doctor`, { userId: doctorId });
+    return res.data;
+};

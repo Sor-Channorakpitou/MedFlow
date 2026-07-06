@@ -1,16 +1,37 @@
 import { Building2, Mail, Lock, Shield, BriefcaseMedical } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import { getCurrentUser } from "../../services/authAPI";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function AuthCard() {  
-    const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const handleForgotPassword = () => {
-        navigate("/medflowSupport");
-    };
+  const handleLogin = async () => { 
+    setLoading(true);
+    setError("");
+    
+    try {
+      await login({ email, password });
+    
+      const res = await getCurrentUser();
+      console.log(res)
+      const role = res?.user?.role.name;
 
-    const handleLogin = () => { 
-        navigate("/homescreen");
-    }
+      navigate(`/${role.toLowerCase()}`);
+    } catch (err) { 
+      console.error(err); 
+    } 
+      finally { 
+        setLoading(false); 
+    } 
+  };
 
   return (
     <div className="bg-white w-full max-w-md border rounded-lg shadow-sm p-8">
@@ -29,26 +50,6 @@ export default function AuthCard() {
       </p>
 
       <div className="mt-8 space-y-5">
-        <div>
-          <label className="font-medium block mb-2">
-            Clinic Domain
-          </label>
-
-          <div className="flex border rounded-md overflow-hidden">
-            <div className="px-3 flex items-center bg-gray-50">
-              <Building2 size={18} />
-            </div>
-
-            <input
-              className="flex-1 p-3 outline-none"
-              placeholder="cityclinic"
-            />
-
-            <span className="px-3 flex items-center text-gray-500">
-              .medflow.com
-            </span>
-          </div>
-        </div>
 
         <div>
           <label className="font-medium block mb-2">
@@ -62,8 +63,10 @@ export default function AuthCard() {
 
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="flex-1 p-3 outline-none"
-              placeholder="doctor@clinic.com"
+              placeholder="doctor@medflow.com"
             />
           </div>
         </div>
@@ -73,13 +76,6 @@ export default function AuthCard() {
             <label className="font-medium">
               Password
             </label>
-
-            <button 
-                className="text-teal-600 text-sm" 
-                onClick={handleForgotPassword}
-            >
-              Forgot password?
-            </button>
             
           </div>
 
@@ -90,6 +86,8 @@ export default function AuthCard() {
 
             <input
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="flex-1 p-3 outline-none"
               placeholder="••••••••"
             />
