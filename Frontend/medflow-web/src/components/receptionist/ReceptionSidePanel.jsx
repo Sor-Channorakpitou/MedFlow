@@ -26,14 +26,13 @@ export default function ReceptionSidePanel({ setSubView, stats }) {
   };
 
   return (
-    <div className="w-60 flex flex-col gap-4 shrink-0">
-      {/* Quick Actions Component Block */}
+    <div className="w-80 flex flex-col gap-4 shrink-0">
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-1 text-left">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h4>
         
         <button 
           onClick={() => setSubView('register')}
-          className="w-full flex items-center justify-center gap-2 bg-teal-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition hover:bg-teal-800 shadow-sm"
+          className="w-full flex items-center justify-center gap-2 bg-teal-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition hover:bg-teal-800 shadow-sm"
         >
           <UserPlus className="w-4 h-4" /> ADD NEW PATIENT
         </button>
@@ -43,16 +42,16 @@ export default function ReceptionSidePanel({ setSubView, stats }) {
             setSubView('list');
             alert("To schedule an appointment, select an available open time slot from the active manifest grid.");
           }}
-          className="w-full flex items-center justify-center gap-2 border border-teal-600 text-teal-700 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-teal-50"
+          className="w-full flex items-center justify-center gap-2 border bg-teal-600 text-teal-700 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-teal-50"
         >
           <CalendarDays className="w-4 h-4" /> SCHEDULE APPOINTMENT
         </button>
 
         <button 
           onClick={handleEmergency}
-          className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-rose-50/50 hover:border-rose-200 group"
+          className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-800 font-bold py-2.5 px-4 rounded-lg text-xs transition bg-white hover:bg-rose-50/50 group"
         >
-          <Flame className="w-4 h-4 text-rose-500 group-hover:animate-bounce" /> EMERGENCY ADMISSION
+          <Flame className="w-4 h-4 text-rose-500 " /> EMERGENCY ADMISSION
         </button>
       </div>
 

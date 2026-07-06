@@ -1,7 +1,17 @@
 export const formatDateOnly = (date?: Date | string | null | undefined) => {
+  if (!date) return null;
+
+  return new Date(date).toISOString().split("T")[0];
+};
+
+export const formatTimeOnly = (date?: Date | string | null | undefined) => {
     if (!date) return null;
 
-    return new Date(date).toISOString().split("T")[0];
+    return new Date(date).toLocaleTimeString([], { 
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true, 
+    })
 };
 
 export const toUserDTO = (user: any) => ({
@@ -35,8 +45,33 @@ export const toAppointmentDTO = (appointment: any) => ({
     reason: appointment.reason,
     appointmentDate: formatDateOnly(appointment.appointmentDate),
     status: appointment.status,
-    userId: appointment.userId, 
+    createdAt: appointment.createdAt,
+    userId: appointment.userId,
     patientId: appointment.patientId,
+    endTime: formatTimeOnly(appointment.endTime),
+    startTime: formatTimeOnly(appointment.startTime),
+    queue: appointment.queue,
+    invoice: appointment.invoice,
+    medicalRecord: appointment.medicalRecord,
+
+    patient: appointment.patient
+      ? {
+          id: appointment.patient.id,
+          fullName: appointment.patient.fullName,
+          gender: appointment.patient.gender,
+          phone: appointment.patient.phone,
+        }
+      : null,
+
+    user: appointment.user
+      ? {
+          id: appointment.user.id,
+          name: appointment.user.name,
+          role: appointment.user.role?.name ?? null,
+        }
+      : null,
+
+    urgencyLevel: appointment.triage?.urgencyLevel ?? null,
 });
 
 export const toMedicalRecordDTO = (record: any) => ({
@@ -55,6 +90,7 @@ export const toInvoiceDTO = (invoice: any) => ({
   issuedDate: formatDateOnly(invoice.issuedDate),
   paymentStatus: invoice.paymentStatus,
   totalAmount: Number(invoice.totalAmount),
+  invoiceItem: invoice.invoiceItems,
 
   appointmentId: invoice.appointmentId,
   patientId: invoice.patientId,

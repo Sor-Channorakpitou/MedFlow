@@ -14,27 +14,25 @@ model Role {
 }
 
 model User {
-  id             Int             @id @default(autoincrement())
-  email          String          @unique
-  name           String
-  phone          String?
-  dateOfBirth    DateTime        @db.Date
-  passwordHash   String
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  roleId         Int
-  profileImage     String?
-  profilePublicId  String?
-
-  appointments   Appointment[]
-  invoices       Invoice[]
-  medicalRecords MedicalRecord[]
-  prescriptions  Prescription[]
-  refreshTokens  RefreshToken[]
-  triages        Triage[]
-  queues         Queue[]
-
-  role           Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
+  name            String
+  phone           String?
+  dateOfBirth     DateTime        @db.Date
+  passwordHash    String
+  createdAt       DateTime        @default(now())
+  roleId          Int
+  isActive        Boolean         @default(true)
+  profileImage    String?
+  profilePublicId String?
+  appointments    Appointment[]
+  invoices        Invoice[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  queues          Queue[]
+  refreshTokens   RefreshToken[]
+  triages         Triage[]
+  role            Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
 }
 
 model Patient {
@@ -45,12 +43,11 @@ model Patient {
   address        String?
   dateOfBirth    DateTime
   createdAt      DateTime        @default(now())
-
   appointments   Appointment[]
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
   prescriptions  Prescription[]
-  queues         Queue[]
+  queues         Queue?
 }
 
 model Appointment {
@@ -59,15 +56,15 @@ model Appointment {
   appointmentDate DateTime
   status          AppointmentStatus @default(PENDING)
   createdAt       DateTime          @default(now())
-  startTime       DateTime
-  endTime         DateTime
   userId          Int
   patientId       Int
-
+  endTime         DateTime
+  startTime       DateTime
   patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   invoice         Invoice?
   medicalRecord   MedicalRecord?
+  queue           Queue?
   triage          Triage?
 
   @@index([userId])
@@ -80,21 +77,18 @@ model Medication {
   description             String
   stockQuantity           Int
   unitPrice               Decimal                  @db.Decimal(10, 2)
-
   prescriptionMedications PrescriptionMedication[]
 }
 
 model InvoiceItem {
-  id            Int           @id @default(autoincrement())
-  unitPrice     Decimal       @db.Decimal(10, 2)
-  description   String
-  type          String
-  subTotal      Decimal       @db.Decimal(10, 2)
-  quantity      Int 
-  invoiceId     Int
-
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
+  id          Int     @id @default(autoincrement())
+  unitPrice   Decimal @db.Decimal(10, 2)
+  description String
+  type        String
+  subTotal    Decimal @db.Decimal(10, 2)
+  quantity    Int
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
@@ -107,14 +101,12 @@ model Invoice {
   totalAmount   Decimal       @db.Decimal(10, 2)
   appointmentId Int           @unique
   patientId     Int
-  invoiceItemId     Int
   userId        Int
-
+  invoiceItemId Int
   appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  invoiceItems InvoiceItem[]
+  invoiceItems  InvoiceItem[]
 
   @@index([patientId])
 }
@@ -127,7 +119,6 @@ model MedicalRecord {
   userId        Int
   patientId     Int
   appointmentId Int           @unique
-
   appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -161,11 +152,8 @@ model PrescriptionMedication {
   dosage         Int
   frequency      Int
   duration       String
-
   medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Cascade)
   prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-
-  @@unique([medicationId, prescriptionId])
 }
 
 model Triage {
@@ -179,7 +167,6 @@ model Triage {
   createdAt     DateTime     @default(now())
   appointmentId Int          @unique
   userId        Int
-  
   appointment   Appointment  @relation(fields: [appointmentId], references: [id])
   user          User         @relation(fields: [userId], references: [id])
 }
@@ -188,27 +175,24 @@ model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
   userId    Int
-  expiresAt DateTime 
+  expiresAt DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
 }
 
 model Queue {
-  id              Int      @id @default(autoincrement())
-
-  patientId       Int      @unique
-  patient         Patient  @relation(fields: [patientId], references: [id])
-
-  stage           Stage
-  status          QueueStatus
-
-  queueNumber     Int
-
-  userId          Int?
-  user            User? @relation(fields: [userId], references: [id])
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            Int          @id @default(autoincrement())
+  patientId     Int          @unique
+  stage         Stage
+  status        QueueStatus
+  queueNumber   Int
+  userId        Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  appointmentId Int?         @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  patient       Patient      @relation(fields: [patientId], references: [id])
+  user          User?        @relation(fields: [userId], references: [id])
 }
 
 model playing_with_neon {
