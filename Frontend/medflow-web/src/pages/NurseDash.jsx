@@ -96,53 +96,61 @@ function NurseDash() {
     initials: "SJ",
   };
 
-  const reactiveQueue = useMemo(() => {
-    const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
-    return safeQueue.map((queue) => {
-      const patient = queue.patient || queue.Patient || {};
-      const triage = queue.triage || queue.Triage || null;
-      const appointment = queue.appointment || queue.Appointment || {};
-      const birthYear = patient.dateOfBirth
-        ? new Date(patient.dateOfBirth).getFullYear()
-        : 1990;
+const reactiveQueue = useMemo(() => {
+  const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
+  
+  return safeQueue.map((queue) => {
+    // 1. Perform the standard mapping first so we have the data
+    const patient = queue.patient || queue.Patient || {};
+    const triage = queue.triage || queue.Triage || null;
+    const appointment = queue.appointment || queue.Appointment || {};
+    const birthYear = patient.dateOfBirth ? new Date(patient.dateOfBirth).getFullYear() : 1990;
+    const currentYear = new Date().getFullYear();
 
-      const currentYear = new Date().getFullYear();
+    const basePatientData = {
+      id: queue.id,
+      queueId: queue.id,
+      appointmentId: appointment.id,
+      patientId: patient.id,
+      name: patient.fullName?.toUpperCase() || "UNKNOWN",
+      age: currentYear - birthYear,
+      gender: patient.gender === "MALE" ? "M" : "F",
+      arrival: new Date(queue.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      wait: queue.status,
+      stage: queue.stage,
+      urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
+      vitals: {
+        bpSys: triage?.bloodPressure?.split("/")[0] || "120",
+        bpDia: triage?.bloodPressure?.split("/")[1] || "80",
+        hr: String(triage?.heartRate ?? "80"),
+        temp: String(triage?.temperature ?? "37"),
+        weight: String(triage?.weight ?? "70"),
+        spo2: String(triage?.spo2 ?? "98"),
+      },
+      notes: triage?.note || "",
+    };
 
+    // 2. Override with local state if this is the selected patient
+    if (queue.id === selectedId) {
       return {
-        id: queue.id,
-        queueId: queue.id,
-        appointmentId: appointment.id,
-        patientId: patient.id,
-
-        name: patient.fullName.toUpperCase(),
-
-        age: currentYear - birthYear,
-
-        gender: patient.gender === "MALE" ? "M" : "F",
-
-        arrival: new Date(queue.createdAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-
-        wait: queue.status,
-        stage: queue.stage,
-
-        urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
-
+        ...basePatientData,
+        urgency: urgencyLevel,
         vitals: {
-          bpSys: triage?.bloodPressure?.split("/")[0] || "120",
-          bpDia: triage?.bloodPressure?.split("/")[1] || "80",
-          hr: String(triage?.heartRate ?? "80"),
-          temp: String(triage?.temperature ?? "37"),
-          weight: String(triage?.weight ?? "70"),
-          spo2: String(triage?.spo2 ?? "98"),
+          ...basePatientData.vitals,
+          bpSys: bp.split('/')[0] || "120",
+          bpDia: bp.split('/')[1] || "80",
+          hr: String(hr),
+          temp: String(temp),
+          weight: String(weight),
+          spo2: String(spo2),
         },
-
-        notes: triage?.note || "",
+        notes: notes,
       };
-    });
-  }, [rawQueue]);
+    }
+
+    return basePatientData;
+  });
+}, [rawQueue, selectedId, urgencyLevel, bp, hr, temp, weight, spo2, notes]);
 
   useEffect(() => {
     if (reactiveQueue.length > 0) {

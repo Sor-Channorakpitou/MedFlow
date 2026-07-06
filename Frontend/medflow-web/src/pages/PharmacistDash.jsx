@@ -82,20 +82,18 @@ function PharmacistDash() {
     }
   }, [reactiveQueue, selectedPrescriptionId]);
 
-  // Derived Active Prescription (No useEffect loop hazard)
+
   const activePrescription = useMemo(() => {
     if (reactiveQueue.length === 0) return null;
 
     const currentActive = reactiveQueue.find(
       (p) => p.id === selectedPrescriptionId,
     );
-    // Fallback safely to the first matched search/queue item if selection gets lost
+   
     return currentActive || reactiveQueue[0];
   }, [reactiveQueue, selectedPrescriptionId]);
 
   const handleToggleDispense = (medItemId) => {
-    // Note: Since rawPrescriptions comes from global context, you will handle local check updates 
-    // down in components/MedicationDispensation or through your state context if mutation is required.
     console.log(`Toggling item dispensation status for item ID: ${medItemId}`);
   };
 
@@ -105,7 +103,7 @@ function PharmacistDash() {
     try {
       const targetId = Number(activePrescription.prescriptionId);
       
-      // Call the socket-connected provider action directly
+    
       await dispensePrescription(targetId);
 
       setSelectedPrescriptionId("");
@@ -136,7 +134,7 @@ function PharmacistDash() {
 
       {activePrescription ? (
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 p-6 gap-6 min-h-0 overflow-hidden">
-          {/* Master Queue List Grid Section */}
+
           <div className="lg:col-span-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
             <PendingFulfillmentList
               patients={reactiveQueue}
@@ -145,7 +143,7 @@ function PharmacistDash() {
             />
           </div>
 
-          {/* Interactive Workspace Area Framework */}
+        
           <div className="lg:col-span-2 flex flex-col space-y-4 h-full overflow-y-auto pr-1">
             <AllergyBanner text={activePrescription.allergies} />
 

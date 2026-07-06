@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "../services/api";
 import { useSocket } from "../hooks/useSocket";
-import { useAuth } from '../hooks/useAuth';
-import { WorkflowContext } from "./WorkflowContextCore"; 
+import { useAuth } from "../hooks/useAuth";
+import { WorkflowContext } from "./WorkflowContextCore";
 
-import { getLiveQueue } from '../services/triageAPI';
-import { getPendingPrescriptions } from '../services/prescriptionAPI';
-import { getAwaitingPatients } from '../services/consultationAPI';
+import { getLiveQueue } from "../services/triageAPI";
+import { getPendingPrescriptions } from "../services/prescriptionAPI";
+import { getAwaitingPatients } from "../services/consultationAPI";
 
 export const WorkflowProvider = ({ children }) => {
   const socket = useSocket();
@@ -21,11 +21,17 @@ export const WorkflowProvider = ({ children }) => {
 
   const refreshWorkflow = useCallback(async () => {
     try {
-      const [appointmentRes, triageData, consultationData, prescriptionData, billingRes] = await Promise.all([
-        axios.get("/api/appointments").catch(() => ({ data: [] })), 
+      const [
+        appointmentRes,
+        triageData,
+        consultationData,
+        prescriptionData,
+        billingRes,
+      ] = await Promise.all([
+        axios.get("/api/appointments").catch(() => ({ data: [] })),
         getLiveQueue().catch(() => ({ queue: [] })),
         getAwaitingPatients().catch(() => ({ queue: [] })),
-        getPendingPrescriptions().catch(() => ({ prescriptions: [] })), 
+        getPendingPrescriptions().catch(() => ({ prescriptions: [] })),
         axios.get("/api/billings").catch(() => ({ data: [] })),
       ]);
 
@@ -53,9 +59,9 @@ export const WorkflowProvider = ({ children }) => {
       refreshWorkflow();
     };
 
-    socket.on("workflow_changed", handleWorkflowChange);
+    socket.on("workflow-update", handleWorkflowChange);
     return () => {
-      socket.off("workflow_changed", handleWorkflowChange);
+      socket.off("workflow-update", handleWorkflowChange);
     };
   }, [socket, refreshWorkflow]);
 
@@ -76,17 +82,22 @@ export const WorkflowProvider = ({ children }) => {
 
   const submitDoctorConsultation = async (payload) => {
     const response = await axios.post("/consultation", payload);
-    await refreshWorkflow(); 
+    await refreshWorkflow();
     return response.data;
   };
 
   const dispensePrescription = async (prescriptionId) => {
-    const response = await axios.put(`/prescriptions/${prescriptionId}/dispense`);
+    const response = await axios.put(
+      `/prescriptions/${prescriptionId}/dispense`,
+    );
     return response.data;
   };
 
   const issueBillPayment = async (invoiceId, payload = {}) => {
-    const response = await axios.patch(`/billings/${invoiceId}/issue-payment`, payload);
+    const response = await axios.patch(
+      `/billings/${invoiceId}/issue-payment`,
+      payload,
+    );
     return response.data;
   };
 
