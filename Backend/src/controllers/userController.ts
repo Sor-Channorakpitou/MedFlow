@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { uploadProfileImageService } from "../services/userService.js";
-import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser } from "../services/userService.js";
+import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser, activateUser } from "../services/userService.js";
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -105,7 +105,21 @@ export const deactivateUserById = async (req: Request, res: Response, next: Next
 
         if(!user) return res.status(404).json({ message: "User not found" });
 
-        return res.status(200).json({ message: "User deactivate successfully" });  
+        return res.status(200).json({ message: "User deactivate successfully", user });  
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const activateUserById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = Number(req.params.id);
+
+        const user = await activateUser(id);
+
+        if(!user) return res.status(404).json({ message: "User not found" });
+
+        return res.status(200).json({ message: "User activate successfully", user });  
     } catch (error) {
         next(error);
     }

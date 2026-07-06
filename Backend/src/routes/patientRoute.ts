@@ -27,7 +27,7 @@ router.get('/', authenticate, authorize(["ADMIN", "RECEPTIONIST", "NURSE", "DOCT
 
 /**
  * @swagger
- * /patients/:id:
+ * /patients/{id}:
  *   get:
  *     summary: Get patient by ID
  *     description: Retrieve a single patient by their ID.
@@ -84,7 +84,7 @@ router.post('/', authenticate, authorize(["RECEPTIONIST"]), createPatient);
 
 /**
  * @swagger
- * /patients/:id:
+ * /patients/{id}:
  *   patch:
  *     summary: Update patient by ID
  *     description: Update patient details partially (Receptionist only).
@@ -121,7 +121,7 @@ router.patch('/:id', authenticate, authorize(["RECEPTIONIST"]), updatePatientByI
 
 /**
  * @swagger
- * /patients/:id:
+ * /patients/{id}:
  *   delete:
  *     summary: Delete patient by ID
  *     description: Permanently delete a patient record (Receptionist only).
