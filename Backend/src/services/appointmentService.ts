@@ -25,71 +25,73 @@ const validateTimeRange = (start: Date, end: Date) => {
 };
 
 export const insertAppointment = async (data: AppointmentInfo) => {
-  if (
-    !data.appointmentDate ||
-    !data.status ||
-    !data.startTime ||
-    !data.endTime ||
-    !data.userId ||
-    !data.patientId
-  ) {
-    throw new Error("MISSING_REQUIRED_FIELDS");
-  }
+    if (
+      !data.appointmentDate ||
+      !data.status ||
+      !data.startTime ||
+      !data.endTime ||
+      !data.userId ||
+      !data.patientId
+    ) {
+      throw new Error("MISSING_REQUIRED_FIELDS");
+    }
 
-  validateTimeRange(data.startTime, data.endTime);
+    validateTimeRange(data.startTime, data.endTime);
 
-  const patient = await prisma.patient.findUnique({
-    where: { id: data.patientId },
-  });
+    const patient = await prisma.patient.findUnique({
+      where: { id: data.patientId },
+    });
 
-  if (!patient) throw new Error("NOT_FOUND");
+    if (!patient) throw new Error("NOT_FOUND");
 
-  const user = await prisma.user.findUnique({
-    where: { id: data.userId },
-  });
+    const user = await prisma.user.findUnique({
+      where: { id: data.userId },
+    });
 
-  if (!user) throw new Error("USER_NOT_FOUND");
+    if (!user) throw new Error("USER_NOT_FOUND");
 
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      userId: data.userId,
-      OR: [
-        {
-          AND: [
-            { startTime: { lt: data.endTime } },
-            { endTime: { gt: data.startTime } },
-          ],
-        },
-      ],
-    },
-  });
-
-  if (conflict) throw new Error("APPOINTMENT_TIME_CONFLICT");
-
-  return toAppointmentDTO(
-    await prisma.appointment.create({
-      data: {
-        reason: data.reason?.trim(),
-        appointmentDate: new Date(data.appointmentDate),
-        status: data.status,
-        startTime: new Date(data.startTime),
-        endTime: new Date(data.endTime),
+    const conflict = await prisma.appointment.findFirst({
+      where: {
         userId: data.userId,
-        patientId: data.patientId,
+        OR: [
+          {
+            AND: [
+              { startTime: { lt: data.endTime } },
+              { endTime: { gt: data.startTime } },
+            ],
+          },
+        ],
       },
-      include: {
-        patient: true,
-        user: true,
-      },
-    })
-  );
+    });
+
+    if (conflict) throw new Error("APPOINTMENT_TIME_CONFLICT");
+
+    return toAppointmentDTO(
+      await prisma.appointment.create({
+        data: {
+          reason: data.reason?.trim(),
+          appointmentDate: new Date(data.appointmentDate),
+          status: data.status,
+          startTime: new Date(data.startTime),
+          endTime: new Date(data.endTime),
+          userId: data.userId,
+          patientId: data.patientId,
+        },
+        include: {
+          patient: true,
+          user: true,
+        },
+      })
+    );
 };
 
 export const findAppointments = async () => {
   const appointments = await prisma.appointment.findMany({
     include: {
       patient: true,
-      user: true,
+      user: { include: { role: true } },
+      triage: true,
+      invoice: true,
     },
     orderBy: {
       createdAt: "desc",

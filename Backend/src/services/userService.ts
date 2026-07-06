@@ -4,6 +4,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { uploadToCloudinary } from "../utils/cloudinaryUpload.js";
 import { toUserDTO } from "../utils/dataFormat.js";
 import { validatePassword } from "../utils/passwordValidator.js";
+import { tr } from "zod/locales";
 
 type CreateUserInput = {
     email: string;
@@ -16,7 +17,8 @@ type CreateUserInput = {
 
 export const findAllUsers = async () => {
     const users = await prisma.user.findMany({
-        where: { isActive: true }
+        include: { role: true },
+        orderBy: { name: "asc" },
     });
 
     if(!users) throw new Error("NO_RESOURCES"); 
@@ -158,9 +160,43 @@ export const deactivateUser = async (id: number) => {
                 id: true, 
                 email: true, 
                 name: true,
+                isActive: true,
                 phone: true, 
                 dateOfBirth: true, 
-                roleId: true
+                role: { 
+                    select: {
+                        name: true
+                    }
+                }
+            }
+        })
+    );
+};
+
+export const activateUser = async (id: number) => {
+    const user = await prisma.user.findUnique({
+        where: { id }
+    });
+
+    if(!user) throw new Error("NOT_FOUND");
+    if(user.isActive) throw new Error("USER_ALREADY_ACTIVE");
+
+    return toUserDTO(
+        await prisma.user.update({
+            where: { id },
+            data: { isActive: true },
+            select: {
+                id: true, 
+                email: true, 
+                name: true,
+                isActive: true,
+                phone: true, 
+                dateOfBirth: true, 
+                role: { 
+                    select: {
+                        name: true
+                    }
+                }
             }
         })
     );
@@ -189,6 +225,7 @@ export const findUserEmail = async (email: string) => {
             id: true,
             email: true,
             name: true,
+            isActive: true,
             phone: true,
             dateOfBirth: true,
             role: {

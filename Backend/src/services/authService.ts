@@ -13,6 +13,10 @@ export const loginUser = async (email: string, password: string) => {
         throw new Error("INVALID_CREDENTIALS");
     }
 
+    if (!user.isActive) {
+        throw new Error("ACCOUNT_DEACTIVATED");
+    }
+
     // Verify the password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
