@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
+    "predev": "kill-port 3000",
     "dev": "nodemon",
     "start": "node dist/server.js",
     "seed": "node dist/lib/clinicalSeed.js",
@@ -28,6 +29,7 @@
     "prisma": "^6.19.3",
     "socket.io": "^4.8.3",
     "streamifier": "^0.1.1",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"
   },
@@ -40,7 +42,9 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^25.9.1",
     "@types/streamifier": "^0.1.2",
+    "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "kill-port": "^2.0.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.4",

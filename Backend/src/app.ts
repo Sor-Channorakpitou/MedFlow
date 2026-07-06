@@ -7,7 +7,10 @@ import authRoute from "./routes/authRoute.js";
 import appointmentRoute from "./routes/appointmentRoute.js";
 import userRoute from "./routes/userRoute.js";
 import medicalRecordRoute from "./routes/medicalRecordRoute.js";
+import patientRoute from "./routes/patientRoute.js";
+import invoiceItemRoute from "./routes/invoiceItemRoute.js"
 import billingRoute from "./routes/billingRoute.js";
+import queueRoute from "./routes/queueRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
@@ -23,6 +26,7 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true
 }));
+
 app.use(cookieParser());
 app.use(express.json());
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -31,8 +35,11 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute); 
 app.use('/api/appointments', appointmentRoute);
+app.use('/api/invoiceItems', invoiceItemRoute);
 app.use('/api/medicalRecords', medicalRecordRoute);
-app.use('/api/billings', billingRoute);
+app.use('/api/invoices', billingRoute);
+app.use('/api/patients', patientRoute);
+app.use('/api/queues', queueRoute);
 
 
 app.use('/api/triage', triageRouter);

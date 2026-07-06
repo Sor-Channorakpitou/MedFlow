@@ -1,22 +1,23 @@
 // src/context/WorkflowContext.jsx
-import React, { createContext, useState, useContext, useMemo} from 'react';
+import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   MOCK_USERS, 
   MOCK_STAFF_PROFILES,
   MOCK_PATIENTS, 
-  MOCK_APPOINTMENTS, 
   MOCK_TRIAGES, 
   MOCK_PRESCRIPTIONS, 
   MOCK_PRESCRIPTION_ITEMS,
   MOCK_WORKLOADS
 } from '../constants/mockData';
+import { getAllAppointments } from '../services/appointmentAPI';
 
 const WorkflowContext = createContext();
 
 export const WorkflowProvider = ({ children }) => {
   // Ingest our normalized relational database tables into state
-  const [appointments, setAppointments] = useState(MOCK_APPOINTMENTS);
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [patients, setPatients] = useState(MOCK_PATIENTS);
   const [triages, setTriages] = useState(MOCK_TRIAGES);
   const [prescriptions, setPrescriptions] = useState(MOCK_PRESCRIPTIONS);
@@ -30,6 +31,27 @@ export const WorkflowProvider = ({ children }) => {
     if (!user) return null;
 
     return MOCK_STAFF_PROFILES[user.role] || null;
+  }, [user]);
+
+  const fetchAppointments = async () => {
+    try {
+      setAppointmentsLoading(true);
+      const res = await getAllAppointments();
+      setAppointments(res);
+    } catch (err) {
+      // 404 means "no appointments found" per your controller — treat as empty, not an error
+      if (err.response?.status === 404) {
+        setAppointments([]);
+      } else {
+        console.error('Failed to fetch appointments:', err);
+      }
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) fetchAppointments();
   }, [user]);
   
 
