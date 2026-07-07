@@ -48,7 +48,7 @@ const emitWorkflowChange = (req: any, res: any, next: any) => {
  *       401:
  *         description: Unauthorized
  */
-router.get("/pending", authenticate, authorize(["ADMIN", "PHARMACIST"]),emitWorkflowChange, prescriptionController.getPendingPrescriptions);
+router.get("/pending", authenticate, authorize(["ADMIN", "PHARMACIST"]),prescriptionController.getPendingPrescriptions);
 
 /**
  * @swagger
@@ -160,6 +160,6 @@ router.get("/:id", authenticate, authorize(["ADMIN", "PHARMACIST"]), prescriptio
  *       404:
  *         description: Prescription not found
  */
-router.put("/:id/dispense", authenticate, authorize(["ADMIN", "PHARMACIST"]), emitWorkflowChange, prescriptionController.dispensePrescription);
+router.put("/:id/dispense", authenticate, authorize(["ADMIN", "PHARMACIST"]),  prescriptionController.dispensePrescription,emitWorkflowChange);
 
 export default router;

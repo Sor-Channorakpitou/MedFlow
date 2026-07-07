@@ -10,6 +10,9 @@ import Header from "../components/Header";
 
 import { useWorkflow } from "../hooks/useWorkflow";
 
+import { useToast } from "../hooks/useToast";
+import ToastContainer from "../components/ToastContainer";  
+
 // Retained purely for history line queries matching user selections
 import { getPatientHistory } from "../services/consultationAPI";
 import { getAllMedications } from "../services/medicationAPI";
@@ -20,6 +23,8 @@ function DoctorDash() {
     loading: isLoading,
     submitDoctorConsultation,
   } = useWorkflow();
+
+  const { toasts, showToast, dismissToast } = useToast();
 
   const [activeQueueId, setActiveQueueId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -176,7 +181,7 @@ function DoctorDash() {
   const handleAddMedication = (newMed) => {
     // newMed MUST come from a dropdown of real medications from your database
     if (!newMed.id && !newMed.medicationId) {
-      alert("Please select a valid medication from the database list.");
+       showToast("Please select a valid medication from the list.", "error");
       return;
     }
 
@@ -213,24 +218,23 @@ function DoctorDash() {
         appointmentId: Number(activeCase.appointmentId),
         patientId: Number(activeCase.patientId),
         diagnosis: soapNotes.assessment,
-        notes: soapNotes.notes,
+        notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),
         medications: targetMedications,
       };
 
       await submitDoctorConsultation(consultationPayload);
 
       setActiveQueueId("");
-      alert(
-        "Consultation finalized successfully. Case dispatched to pharmacy.",
-      );
+      showToast("Consultation finalized successfully. Case dispatched to pharmacy.", "success");
     } catch (err) {
       console.error("Consultation submission crash:", err);
-      alert("Failed to commit case records. Check network configurations.");
+      showToast("Please fill in all required fields.", "error");
     }
   };
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden px-4 py-3">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Header
         user={currentUser}
         searchPlaceholder="Filter clinical queue records..."

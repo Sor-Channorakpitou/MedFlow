@@ -2,7 +2,6 @@ import { CheckCircle } from "lucide-react";
 
 function MedicationDispensation({ patient, onFinalize }) {
   const filledCount = patient.medications.filter((m) => m.isDispensed).length;
-  const allFilled = filledCount === patient.medications.length;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 flex flex-col overflow-hidden justify-between">
@@ -28,7 +27,6 @@ function MedicationDispensation({ patient, onFinalize }) {
         </div>
       </div>
 
-      {/* 2. Core Medication Loop Framework */}
       <div className="p-6 space-y-4 flex-1 overflow-y-auto">
         {patient.medications.map((med) => (
           <div
@@ -45,7 +43,6 @@ function MedicationDispensation({ patient, onFinalize }) {
                 )}
               </div>
 
-              {/* Clinical usage guide message wrapper */}
               <div className="bg-gray-50 border border-gray-150 rounded-lg p-2.5 max-w-xl">
                 <p className="text-xs text-gray-700 font-medium leading-relaxed">
                   {med.instruction}
@@ -68,7 +65,6 @@ function MedicationDispensation({ patient, onFinalize }) {
         ))}
       </div>
 
-      {/* 3. Operational Dispatch Action Tray Footer */}
       <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end">
         <button
           onClick={onFinalize}

@@ -59,9 +59,11 @@ export const WorkflowProvider = ({ children }) => {
       refreshWorkflow();
     };
 
-    socket.on("workflow-update", handleWorkflowChange);
+    socket.on("workflow_changed", handleWorkflowChange);
+    socket.on("queueUpdated", handleWorkflowChange);
     return () => {
-      socket.off("workflow-update", handleWorkflowChange);
+      socket.off("workflow_changed", handleWorkflowChange);
+      socket.off("queueUpdated", handleWorkflowChange)
     };
   }, [socket, refreshWorkflow]);
 
@@ -90,6 +92,7 @@ export const WorkflowProvider = ({ children }) => {
     const response = await axios.put(
       `/prescriptions/${prescriptionId}/dispense`,
     );
+    await refreshWorkflow();
     return response.data;
   };
 
