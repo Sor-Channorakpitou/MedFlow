@@ -1,38 +1,137 @@
-// src/pages/ReceptionistDash.jsx
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import AppointmentsTable from '../components/receptionist/AppointmentsTable';
 import NewPatientRegistration from '../components/receptionist/NewPatientRegistration';
 import PatientCheckout from '../components/receptionist/PatientCheckout';
 import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
 import Header from '../components/Header';
-import ToastContainer  from '../components/ToastContainer';
-import { useToast } from '../hooks/useToast';
-
-import { useWorkflow } from '../hooks/useWorkflow';
+import { getAllAppointments, updateAppointment } from '../services/appointmentAPI';
+import { getAllQueues, updateQueue } from '../services/queueAPI';
 
 function ReceptionistDash() {
-  const { toasts, showToast, dismissToast } = useToast();
-  const { 
-    appointments = [], 
-    patients = [], 
-    users = [],
-    checkInPatient,
-    finalizePatientCheckout
-  } = useWorkflow();
+
+  const [appointmentList, setAppointmentList] = useState([]);
+  const [queueList, setQueueList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAppointment = async () => {
+      try {
+          setLoading(true);
+          setError('');
+          const data = await getAllAppointments();
+          setAppointmentList(data);
+      } catch (err) {
+          if (err.response?.status === 404) {
+              setAppointmentList([]);
+          } else {
+              setError('Failed to load appointments.');
+              console.error(err);
+          }
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const fetchQueue = async () => {
+      try {
+          setLoading(true);
+          setError('');
+          const data = await getAllQueues();
+          setQueueList(data);
+      } catch (err) {
+          if (err.response?.status === 404) {
+              setQueueList([]);
+          } else {
+              setError('Failed to load queues.');
+              console.error(err);
+          }
+      } finally {
+          setLoading(false);
+      }
+  }
+  
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [appointments, queues] = await Promise.all([
+          getAllAppointments(),
+          getAllQueues(),
+        ]);
+
+        setAppointmentList(appointments);
+        setQueueList(queues);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const isToday = (date) => {
+    const d = new Date(date);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  };
+
+  const handleCheckInAction = async (queue) => {
+    if (!queue || queue.status === "IN_PROGRESS") return;
+
+    try {
+      await updateQueue(queue.id, {
+        status: "IN_PROGRESS",
+        stage: "RECEPTION",
+      });
+
+      // optional UI update
+      setQueueList(prev =>
+        prev.map(q =>
+          q.id === queue.id
+            ? { ...q, status: "IN_PROGRESS", stage: "RECEPTION" }
+            : q
+        )
+      );
+
+    } catch (err) {
+      console.error("Check-in failed:", err);
+    }
+  };
+
+  const handleCheckOutAction = async (queue, appointmentId) => {
+    if (!queue) return;
+
+    try {
+      await updateQueue(queue.id, {
+        status: "COMPLETED",
+        stage: "COMPLETED",
+      });
+
+      await updateAppointment(appointmentId, {
+        status: "COMPLETED",
+      });
+
+      setQueueList(prev => 
+        prev.map(q => q.id === queue.id ? { ...q, status: "COMPLETED", stage: "COMPLETED" } : q )
+      );
+
+    } catch (err) {
+      console.error("Check-out failed:", err);
+    }
+  };
 
   const [subView, setSubView] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCheckoutAppId, setSelectedCheckoutAppId] = useState('');
 
-  const currentUser = {
-    name: "Dina", // Set matching your environment session profile
-    role: "Lead Patient Access Coordinator",
-    initials: "DM",
-  };
-
   const activeAppointmentsList = useMemo(() => {
+
     const getPriorityWeight = (reasonText) => {
-      if (!reasonText) return 1;
+    if (!reasonText) return 1;
       const normalized = reasonText.toLowerCase();
       if (normalized.includes('emergency') || normalized.includes('acute') || normalized.includes('pain')) {
         return 2; // High Priority
@@ -40,25 +139,19 @@ function ReceptionistDash() {
       return 1; // Standard FCFS
     };
 
-    return appointments
-      // FIX: Remove 'AWAITING_TRIAGE' from here so they drop off this list upon check-in!
-      .filter(app => app.workflow_step === 'WAITING')
-      .map(app => {
-        const patient = patients.find(p => p.patient_id === app.patient_id);
-        const staff = users.find(u => u.user_id === app.user_id);
-
-        return {
-          id: app.appointment_id,
-          patientId: app.patient_id,
-          patientName: patient ? patient.full_name : "Unknown Patient",
-          rawTime: new Date(app.appointment_date),
-          time: new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: app.reason || "General Consultation",
-          doctor: staff ? staff.name : "Assigned Staff",
-          status: "Scheduled", // Since they're filtered to 'WAITING', they are all scheduled baselines
-          priorityWeight: getPriorityWeight(app.reason)
-        };
-      })
+    return appointmentList.filter(a => new Date(a.appointmentDate) >= new Date()) // this is for testing (= means today)
+      .map(app => ({
+          id: app.id,
+          patientName: app.patient.fullName,
+          doctor: app.user.name,
+          reason: app.reason,
+          startTime: app.startTime,
+          endTime: app.endTime,
+          patientId: app.patientId,
+          invoice: app.invoice,
+          status: app.status,
+          date: app.appointmentDate
+      }))
       // THE QUEUE ENGINE: Highest Priority jumps ahead. If equal, oldest timestamp takes precedence (FCFS)
       .sort((a, b) => {
         if (b.priorityWeight !== a.priorityWeight) {
@@ -67,31 +160,31 @@ function ReceptionistDash() {
         return a.rawTime - b.rawTime;
       })
       .filter(apt => apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [appointments, patients, users, searchQuery]);
+
+  }, [appointmentList, searchQuery]);
+
 
   const financialMetrics = useMemo(() => {
-    const checkoutQueue = appointments.filter(app => app.workflow_step === 'AWAITING_CHECKOUT');
+    const checkoutQueue = queueList.filter(q => q.stage === 'BILLING');
+
+    const latestTransaction = [...appointmentList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+    const total = appointmentList.reduce((sum, app) => sum + Number(app.invoice?.totalAmount ?? 0),0).toFixed(2);
+
     return {
       pendingInvoices: checkoutQueue.length,
-      collectionsToday: `$${(appointments.filter(app => app.workflow_step === 'AWAITING_CHECKOUT').length * 150).toFixed(2)}`,
+      collectionsToday: `$${total}`,
       transactions: [
-        { name: "Sarah Jenkins", type: "Co-pay Card", amount: "150.00" }
+        { name: latestTransaction?.patient.fullName ,  type: latestTransaction?.invoice?.paymentMethod , amount: latestTransaction?.invoice?.totalAmount }
       ]
     };
-  }, [appointments]);
-
-  const handleCheckInAction = (apt) => {
-    if (apt.status === "Checked In") return;
-    checkInPatient(apt.id);
-    showToast("Patient checked in successfully!", "success");
-  };
+  }, [queueList]);
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Header
-        user={currentUser}
-        searchPlaceholder="Search arriving patient manifests..."
+        searchPlaceholder="Search..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -100,9 +193,9 @@ function ReceptionistDash() {
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           
           {/* Subview Nav Switcher Links */}
-          <div className="flex items-center gap-3 mb-4 text-xs font-semibold">
+          <div className="flex items-center gap-8 mb-4 text-sm font-semibold">
             <button onClick={() => setSubView('list')} className={`pb-1 border-b-2 transition-all ${subView === 'list' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
-              Arrival Manifest
+              Arrival
             </button>
             <button onClick={() => setSubView('register')} className={`pb-1 border-b-2 transition-all ${subView === 'register' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
               New Registration Form
@@ -120,12 +213,20 @@ function ReceptionistDash() {
               <NewPatientRegistration onCompleteRegistration={() => setSubView('list')} />
             )}
             {subView === 'checkout' && (
-              <PatientCheckout selectedAppId={selectedCheckoutAppId} onSelectAppId={setSelectedCheckoutAppId} onFinalizeCheckout={finalizePatientCheckout} />
+              <PatientCheckout selectedAppId={selectedCheckoutAppId} onSelectAppId={setSelectedCheckoutAppId} onFinalizeCheckout={handleCheckOutAction} />
             )}
+
+            {subView === 'checkout' && (
+              <div className="pl-10">
+                <ReceptionSidePanel 
+                  setSubView={setSubView} 
+                  stats={financialMetrics} 
+                /> 
+              </div>
+            )}
+
           </div>
-        </div>
-{/* 
-        <ReceptionSidePanel setSubView={setSubView} stats={financialMetrics} /> */}
+        </div> 
       </div>
     </div>
   );

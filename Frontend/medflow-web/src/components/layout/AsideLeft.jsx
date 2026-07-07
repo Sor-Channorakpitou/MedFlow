@@ -7,12 +7,12 @@ import icon from "../../assets/icon.png";
 import { mainNavItems, bottomNavItems } from "./sidebarConfig";
 import { ROLE_THEMES } from "../../constants/roles";
 
-const AsideLeft = () => {
+const AsideLeft = ({ onLogout, isOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
-  // Determine active item based on the current URL path (e.g., "/reception")
+  // Determine active item based on the current URL path 
   const currentPath = location.pathname;
 
   const handleItemClick = (item) => {
@@ -23,22 +23,44 @@ const AsideLeft = () => {
     }
     navigate(item.path);
   };
-
   return (
-    <aside className="h-screen bg-[#f8f9fa] border-r border-slate-200 flex flex-col justify-between p-4 font-sans select-none shrink-0 w-20 lg:w-64 transition-all duration-300 ease-in-out hidden md:flex">
-      <div className="flex flex-col gap-8">
-        {/* Brand Identity */}
-        <div className="flex items-center gap-3 px-2 pt-2 justify-center lg:justify-start">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-            <img src={icon} className="bg-transparent" />
+    <>
+
+      <aside className="w-64 h-screen bg-[#f8f9fa] border-r border-slate-200 flex flex-col justify-between p-4 font-sans select-none shrink-0">
+        <div className="flex flex-col gap-8">
+          {/* Brand Identity */}
+          <div className="flex items-center gap-3 px-2 pt-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+              <img src={icon} className='bg-transparent'/>
+            </div>
+            <div className='mr-10'>
+              <h1 className="text-base font-bold text-slate-900 leading-tight">MedFlow</h1>
+              <p className="text-xs text-slate-500 font-medium">Clinical Ops</p>
+            </div>
           </div>
-          {/* The following div is now hidden on tablet (md) and phone (hidden), showing only on large (lg) screens */}
-          <div className="hidden lg:block">
-            <h1 className="text-base font-bold text-slate-900 leading-tight">
-              MedFlow
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">Clinical Ops</p>
-          </div>
+
+          {/* Dynamic Navigation Links */}
+          <nav className="flex flex-col gap-1">
+            {
+            mainNavItems
+            .filter(item => item.label.toUpperCase() === user?.role.name)
+            .map((item) => {
+              const isActive = currentPath === item.path;
+              // Fallback to pharmacist theme if not specified
+              const currentTheme = ROLE_THEMES[item.id] || ROLE_THEMES.pharmacist; 
+
+              return (
+                <SidebarItem 
+                  key={item.id}
+                  label={item.label}
+                  icon={item.icon}
+                  isActive={isActive}
+                  theme={currentTheme}
+                  onClick={() => handleItemClick(item)}
+                />
+              );
+            })}
+          </nav>
         </div>
 
         {/* Dynamic Navigation Links */}
@@ -76,19 +98,7 @@ const AsideLeft = () => {
             iconColor: "text-slate-900",
           };
 
-          return (
-            <SidebarItem
-              key={item.id}
-              label={item.label}
-              icon={item.icon}
-              isActive={isActive}
-              theme={defaultTheme}
-              onClick={() => handleItemClick(item)}
-            />
-          );
-        })}
-      </div>
-    </aside>
+    </>
   );
 };
 

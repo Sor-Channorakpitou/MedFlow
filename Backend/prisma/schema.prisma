@@ -50,7 +50,7 @@ model Patient {
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
   prescriptions  Prescription[]
-  queues         Queue[]
+  queues         Queue?
 }
 
 model Appointment {
@@ -59,8 +59,6 @@ model Appointment {
   appointmentDate DateTime
   status          AppointmentStatus @default(PENDING)
   createdAt       DateTime          @default(now())
-  startTime       DateTime
-  endTime         DateTime
   userId          Int
   patientId       Int
 

@@ -8,11 +8,32 @@ import { uploadProfileImage } from "../services/userAPI"
 import { Save } from "lucide-react";
 
 import { useAuth } from "../hooks/useAuth";
+import { getAllPatients } from "../services/patientAPI";
+
 
 function Setting() {
   const { user, updateCurrentUser } = useAuth();
   
   const [activeTab, setActiveTab] = useState("Profile");
+  console.log(user.appointments)
+
+  const isSameDay = (date) => {
+    const d = new Date(date);
+    const today = new Date();
+
+    return (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    );
+  };
+
+  const todayApproval = user.appointments.filter(a => a.status === "PENDING" && isSameDay(a.appointmentDate)).length;
+  const todayConfirmed = user.appointments.filter(a => a.status === "CONFIRMED" && isSameDay(a.appointmentDate)).length;
+  const todayPatient = user.appointments.filter(a => isSameDay(a.appointmentDate)).length;
+  console.log(todayPatient)
+  console.log(todayApproval)
+
 
   // State 1: Client Editable Input Data States (Profile Tab)
   const [formData, setFormData] = useState({
@@ -30,7 +51,7 @@ function Setting() {
     name: "",
     title: "",
     status: "ACTIVE",
-    metrics: { patientReviewsToday: 0, approvalsPending: 0 },
+    metrics: { patientReviewsToday: 0, approvalsPending: 0, totalConfirmed: 0 },
   });
 
   // Whenever the active worker identity changes in the context, re-populate the inputs dynamically
@@ -50,7 +71,7 @@ function Setting() {
         ...prev,
         name: user.name,
         title: user.role.name,
-        metrics: { patientReviewsToday: 3, approvalsPending: 12 }
+        metrics: { patientReviewsToday: todayPatient, approvalsPending: todayApproval, totalConfirmed: todayConfirmed }
       }));
     }
   }, [user]);

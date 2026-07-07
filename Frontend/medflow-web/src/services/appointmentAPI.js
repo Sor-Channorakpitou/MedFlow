@@ -28,6 +28,6 @@ export const cancelAppointment = async (id) => {
 };
 
 export const assignDoctor = async (id, doctorId) => {
-    const res = await api.patch(`${API_BASE_URL}/${id}/assign-doctor`, { userId: doctorId });
+    const res = await api.patch(`${API_BASE_URL}/${id}/assignToDoctor`, { userId: doctorId });
     return res.data;
 };
