@@ -175,7 +175,7 @@ function ReceptionistDash() {
       pendingInvoices: checkoutQueue.length,
       collectionsToday: `$${total}`,
       transactions: [
-        { name: latestTransaction?.patient.fullName ,  type: latestTransaction?.invoice?.paymentMethod , amount: latestTransaction?.invoice.totalAmount }
+        { name: latestTransaction?.patient.fullName ,  type: latestTransaction?.invoice?.paymentMethod , amount: latestTransaction?.invoice?.totalAmount }
       ]
     };
   }, [queueList]);

@@ -55,14 +55,19 @@ function AdminDash() {
       try {
         setLoading(true);
         setError('');
-        await Promise.all([
+
+        const results = await Promise.allSettled([
           fetchInvoice(),
           fetchAppointment(),
           fetchUsers(),
         ]);
-      } catch (err) {
-        console.error(err);
-        setError('Failed to load dashboard data.');
+
+        results.forEach((result, index) => {
+          if (result.status === "rejected") {
+            console.error(`Request ${index} failed:`, result.reason);
+          }
+        });
+
       } finally {
         setLoading(false);
       }
