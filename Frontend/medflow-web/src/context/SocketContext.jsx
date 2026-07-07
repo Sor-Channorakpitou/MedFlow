@@ -1,7 +1,8 @@
-import { createContext, useEffect } from "react";
+import {  useEffect } from "react";
 import  { useAuth } from "../hooks/useAuth";
 import { socket } from "../services/socket";
 import { SocketContext } from "./SocketContextCore";
+
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();
@@ -25,7 +26,7 @@ export function SocketProvider({ children }) {
 
         return () => {
             socket.off("connect", onConnect);
-            socket.disconnect();
+            // socket.disconnect();
         };
     }, [userId, roleName]);
 

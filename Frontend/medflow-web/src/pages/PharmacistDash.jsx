@@ -4,6 +4,8 @@ import PendingFulfillmentList from "../components/pharmacist/PendingFulfillmentL
 import AllergyBanner from "../components/pharmacist/AllergyBanner";
 import MedicationDispensation from "../components/pharmacist/MedicationDispensation";
 import Header from "../components/Header";
+import { useToast } from "../hooks/useToast";
+import ToastContainer from "../components/ToastContainer";
 
 import { useWorkflow } from "../hooks/useWorkflow";
 
@@ -14,6 +16,8 @@ function PharmacistDash() {
     dispensePrescription 
   } = useWorkflow();
 
+  const { toasts, showToast, dismissToast } = useToast();
+  
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -75,7 +79,6 @@ function PharmacistDash() {
       );
   }, [rawPrescriptions, searchQuery]);
 
-  // Sync active id with first element if selection falls out of sync
   useEffect(() => {
     if (reactiveQueue.length > 0 && !selectedPrescriptionId) {
       setSelectedPrescriptionId(reactiveQueue[0].id);
@@ -93,9 +96,9 @@ function PharmacistDash() {
     return currentActive || reactiveQueue[0];
   }, [reactiveQueue, selectedPrescriptionId]);
 
-  const handleToggleDispense = (medItemId) => {
-    console.log(`Toggling item dispensation status for item ID: ${medItemId}`);
-  };
+  // const handleToggleDispense = (medItemId) => {
+  //   console.log(`Toggling item dispensation status for item ID: ${medItemId}`);
+  // };
 
   const handleFinalizeDischarge = async () => {
     if (!activePrescription) return;
@@ -107,10 +110,10 @@ function PharmacistDash() {
       await dispensePrescription(targetId);
 
       setSelectedPrescriptionId("");
-      alert("Prescription order successfully processed and recorded.");
+      showToast("Prescription dispensed successfully.", "success");
     } catch (err) {
       console.error("Discharge execution error: ", err);
-      alert("Backend confirmation failed during dispensation verification routine.");
+      showToast("Failed to dispense prescription.", "error");
     }
   };
 
@@ -124,6 +127,8 @@ function PharmacistDash() {
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden text-left">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       <Header
         user={currentUser}
         searchPlaceholder="Filter dispensary records..."
@@ -150,7 +155,7 @@ function PharmacistDash() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <MedicationDispensation
                 patient={activePrescription}
-                onToggleMed={handleToggleDispense}
+                // onToggleMed={handleToggleDispense}
                 onFinalize={handleFinalizeDischarge}
               />
             </div>

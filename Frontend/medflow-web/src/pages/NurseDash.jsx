@@ -16,6 +16,8 @@ import LiveQueue from "../components/nurse/LiveQueue";
 import ActiveTriagePanel from "../components/nurse/ActiveTriagePanel";
 import StationLogs from "../components/nurse/StationLogs";
 import Header from "../components/Header";
+import ToastContainer from "../components/ToastContainer";
+import { useToast } from "../hooks/useToast";
 
 const URGENCY_META = {
   4: {
@@ -76,6 +78,8 @@ function NurseDash() {
     updateTriageRecord: globalUpdateTriage,
   } = useWorkflow();
 
+  const { toasts, showToast, dismissToast } = useToast();
+
   const [selectedId, setSelectedId] = useState("");
   const [urgencyLevel, setUrgencyLevel] = useState(3);
   const [search, setSearch] = useState("");
@@ -96,61 +100,66 @@ function NurseDash() {
     initials: "SJ",
   };
 
-const reactiveQueue = useMemo(() => {
-  const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
-  
-  return safeQueue.map((queue) => {
-    // 1. Perform the standard mapping first so we have the data
-    const patient = queue.patient || queue.Patient || {};
-    const triage = queue.triage || queue.Triage || null;
-    const appointment = queue.appointment || queue.Appointment || {};
-    const birthYear = patient.dateOfBirth ? new Date(patient.dateOfBirth).getFullYear() : 1990;
-    const currentYear = new Date().getFullYear();
+  const reactiveQueue = useMemo(() => {
+    const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
 
-    const basePatientData = {
-      id: queue.id,
-      queueId: queue.id,
-      appointmentId: appointment.id,
-      patientId: patient.id,
-      name: patient.fullName?.toUpperCase() || "UNKNOWN",
-      age: currentYear - birthYear,
-      gender: patient.gender === "MALE" ? "M" : "F",
-      arrival: new Date(queue.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      wait: queue.status,
-      stage: queue.stage,
-      urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
-      vitals: {
-        bpSys: triage?.bloodPressure?.split("/")[0] || "120",
-        bpDia: triage?.bloodPressure?.split("/")[1] || "80",
-        hr: String(triage?.heartRate ?? "80"),
-        temp: String(triage?.temperature ?? "37"),
-        weight: String(triage?.weight ?? "70"),
-        spo2: String(triage?.spo2 ?? "98"),
-      },
-      notes: triage?.note || "",
-    };
+    return safeQueue.map((queue) => {
+      // 1. Perform the standard mapping first so we have the data
+      const patient = queue.patient || queue.Patient || {};
+      const triage = queue.triage || queue.Triage || null;
+      const appointment = queue.appointment || queue.Appointment || {};
+      const birthYear = patient.dateOfBirth
+        ? new Date(patient.dateOfBirth).getFullYear()
+        : 1990;
+      const currentYear = new Date().getFullYear();
 
-    // 2. Override with local state if this is the selected patient
-    if (queue.id === selectedId) {
-      return {
-        ...basePatientData,
-        urgency: urgencyLevel,
+      const basePatientData = {
+        id: queue.id,
+        queueId: queue.id,
+        appointmentId: appointment.id,
+        patientId: patient.id,
+        name: patient.fullName?.toUpperCase() || "UNKNOWN",
+        age: currentYear - birthYear,
+        gender: patient.gender === "MALE" ? "M" : "F",
+        arrival: new Date(queue.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        wait: queue.status,
+        stage: queue.stage,
+        urgency: REVERSE_URGENCY_MAP[triage?.urgencyLevel] || 2,
         vitals: {
-          ...basePatientData.vitals,
-          bpSys: bp.split('/')[0] || "120",
-          bpDia: bp.split('/')[1] || "80",
-          hr: String(hr),
-          temp: String(temp),
-          weight: String(weight),
-          spo2: String(spo2),
+          bpSys: triage?.bloodPressure?.split("/")[0] || "120",
+          bpDia: triage?.bloodPressure?.split("/")[1] || "80",
+          hr: String(triage?.heartRate ?? "80"),
+          temp: String(triage?.temperature ?? "37"),
+          weight: String(triage?.weight ?? "70"),
+          spo2: String(triage?.spo2 ?? "98"),
         },
-        notes: notes,
+        notes: triage?.note || "",
       };
-    }
 
-    return basePatientData;
-  });
-}, [rawQueue, selectedId, urgencyLevel, bp, hr, temp, weight, spo2, notes]);
+      // 2. Override with local state if this is the selected patient
+      if (queue.id === selectedId) {
+        return {
+          ...basePatientData,
+          urgency: urgencyLevel,
+          vitals: {
+            ...basePatientData.vitals,
+            bpSys: bp.split("/")[0] || "120",
+            bpDia: bp.split("/")[1] || "80",
+            hr: String(hr),
+            temp: String(temp),
+            weight: String(weight),
+            spo2: String(spo2),
+          },
+          notes: notes,
+        };
+      }
+
+      return basePatientData;
+    });
+  }, [rawQueue, selectedId, urgencyLevel, bp, hr, temp, weight, spo2, notes]);
 
   useEffect(() => {
     if (reactiveQueue.length > 0) {
@@ -269,12 +278,12 @@ const reactiveQueue = useMemo(() => {
 
       // setSelectedId("");
       setNotes("");
-      alert("Case successfully triaged and handed over!");
+      showToast("Case successfully triaged and handed over!", "success");
     } catch (err) {
       console.error("Pipeline breakdown pushing data forward:", err);
-      alert(
-        err.response?.data?.message ||
-          "Error transmitting updates over triage stream.",
+      showToast(
+        err.response?.data?.message || "Error transmitting updates over triage stream.",
+        "error"
       );
     } finally {
       setIsSubmitting(false);
@@ -283,6 +292,8 @@ const reactiveQueue = useMemo(() => {
 
   return (
     <div className="flex h-screen flex-col bg-[#f8fafc] text-left text-slate-900 antialiased">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      
       <Header
         user={currentUser}
         searchPlaceholder="Search patient name, ID, or triage level..."
@@ -345,22 +356,22 @@ const reactiveQueue = useMemo(() => {
           <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm break-words">
             <div className="flex-1 min-h-0 overflow-y-auto">
               <ActiveTriagePanel
-    selectedPatient={selectedPatient}
-    urgencyLevel={urgencyLevel}
-    setUrgencyLevel={setUrgencyLevel}
-    vitals={{ bp, hr, temp, weight, spo2 }}
-    setBp={setBp}
-    setHr={setHr}
-    setTemp={setTemp}
-    setWeight={setWeight}
-    setSpo2={setSpo2}
-    bpStatus={activeBpStatus}
-    notes={notes}
-    setNotes={setNotes}
-    onMoveToDoctor={handleMoveToDoctor}
-    isSubmitting={isSubmitting}
-    urgencyMeta={URGENCY_META}
-  />
+                selectedPatient={selectedPatient}
+                urgencyLevel={urgencyLevel}
+                setUrgencyLevel={setUrgencyLevel}
+                vitals={{ bp, hr, temp, weight, spo2 }}
+                setBp={setBp}
+                setHr={setHr}
+                setTemp={setTemp}
+                setWeight={setWeight}
+                setSpo2={setSpo2}
+                bpStatus={activeBpStatus}
+                notes={notes}
+                setNotes={setNotes}
+                onMoveToDoctor={handleMoveToDoctor}
+                isSubmitting={isSubmitting}
+                urgencyMeta={URGENCY_META}
+              />
             </div>
             <StationLogs logs={logs} />
           </div>

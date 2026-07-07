@@ -1,14 +1,17 @@
 // src/pages/ReceptionistDash.jsx
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import AppointmentsTable from '../components/receptionist/AppointmentsTable';
 import NewPatientRegistration from '../components/receptionist/NewPatientRegistration';
 import PatientCheckout from '../components/receptionist/PatientCheckout';
 import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
 import Header from '../components/Header';
+import ToastContainer  from '../components/ToastContainer';
+import { useToast } from '../hooks/useToast';
 
 import { useWorkflow } from '../hooks/useWorkflow';
 
 function ReceptionistDash() {
+  const { toasts, showToast, dismissToast } = useToast();
   const { 
     appointments = [], 
     patients = [], 
@@ -80,10 +83,12 @@ function ReceptionistDash() {
   const handleCheckInAction = (apt) => {
     if (apt.status === "Checked In") return;
     checkInPatient(apt.id);
+    showToast("Patient checked in successfully!", "success");
   };
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Header
         user={currentUser}
         searchPlaceholder="Search arriving patient manifests..."

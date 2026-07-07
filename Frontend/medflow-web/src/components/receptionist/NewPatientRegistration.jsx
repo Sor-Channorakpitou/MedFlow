@@ -2,8 +2,11 @@
 import { useState } from 'react';
 import { UserPlus, HeartPulse, Terminal, User, Phone, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useWorkflow } from "../../hooks/useWorkflow";
+import { useToast } from "../../hooks/useToast";
+import ToastContainer from "../ToastContainer";
 
 export default function NewPatientRegistration({ onCompleteRegistration }) {
+  const { toasts, showToast, dismissToast } = useToast();
   const { addPatientWithAppointment, patients = [] } = useWorkflow();
 
   const [formData, setFormData] = useState({
@@ -42,11 +45,12 @@ export default function NewPatientRegistration({ onCompleteRegistration }) {
     }
 
     if (onCompleteRegistration) onCompleteRegistration(); // Auto-redirect elements straight back to manifest list!
+    showToast("Patient registered successfully!", "success");
   };
 
   return (
     <div className="flex-1 flex gap-5 min-h-0 text-left w-full h-full items-start">
-      
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* FORM FILL DATA MODULE */}
       <form onSubmit={handleSubmit} className="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 h-full overflow-y-auto">
         <div className="border-b border-slate-100 pb-3">

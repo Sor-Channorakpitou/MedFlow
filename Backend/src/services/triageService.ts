@@ -33,6 +33,8 @@ export const createTriageRecord = async (data: CreateTriageInput) => {
     }
   });
 
+  console.log("Appointment found:", appointment);
+
   if (!appointment) {
     throw new Error("APPOINTMENT_NOT_FOUND");
   }

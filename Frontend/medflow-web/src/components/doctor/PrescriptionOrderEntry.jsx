@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
+import { useToast } from "../../hooks/useToast";
+import ToastContainer from "../ToastContainer";
 
 function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
   const [selectedMed, setSelectedMed] = useState("");
@@ -8,6 +10,7 @@ function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
   const [duration, setDuration] = useState("7");
   const [searchTerm, setSearchTerm] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { toasts, showToast, dismissToast } = useToast();
 
   const filteredMeds = useMemo(() => {
     if (!searchTerm) return allMedications;
@@ -28,7 +31,7 @@ function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
     );
 
     if (!medication) {
-      alert("Please select a valid medication from the list.");
+      showToast("Please select a valid medication from the list.", "error");
       return;
     }
 
@@ -45,6 +48,8 @@ function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm text-left">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       <h3 className="text-xs font-bold text-gray-400 uppercase mb-3">
         Prescription Entry
       </h3>

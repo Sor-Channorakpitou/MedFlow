@@ -40,6 +40,9 @@ export const createConsultation = async (req: Request, res: Response, next: Next
     }
 
     const result = await consultService.logNewConsultation(validatedData, doctorId);
+
+     req.app.get("io")?.emit("workflow_changed"); 
+
     res.status(201).json({ success: true, message: "Consultation logged successfully", data: result });
   } catch (error: any) {
     if (error.message.includes("does not exist")) {
