@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext } from "react";
 import * as authAPI from "../services/authAPI";
 import { setAccessToken } from "../services/api";
+import { connectSocket, disconnectSocket } from "../services/socket";
 
 export const AuthContext = createContext(null);
 
@@ -10,8 +11,18 @@ export function AuthProvider({ children }) {
 
     const initializeAuth = async () => {
         try {
+
+            // get new access token using refreshToken cookie
+            const tokenRes = await authAPI.refresh();
+
+            setAccessToken(tokenRes.accessToken);
+
+            // connect websocket
+            connectSocket(tokenRes.accessToken);
+
             const res = await authAPI.getCurrentUser();
             setUser(res.user);
+
         } catch (err) {
             setUser(null);
         } finally {
@@ -25,7 +36,12 @@ export function AuthProvider({ children }) {
 
     const login = async (credentials) => {
         const res = await authAPI.login(credentials);
+
+        // save access token in memory
         setAccessToken(res.accessToken);
+
+        // connect web socket
+        connectSocket(res.accessToken);
 
         const userRes = await authAPI.getCurrentUser();
         setUser(userRes.user);
@@ -36,6 +52,7 @@ export function AuthProvider({ children }) {
         try {
             await authAPI.logout();
         } finally {
+            disconnectSocket();
             setAccessToken(null);
             setUser(null);
         }

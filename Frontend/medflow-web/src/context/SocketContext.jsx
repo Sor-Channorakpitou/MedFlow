@@ -1,8 +1,7 @@
 import { createContext, useEffect } from "react";
 import  { useAuth } from "../hooks/useAuth";
 import { socket } from "../services/socket";
-
-export const SocketContext = createContext(null);
+import { SocketContext } from "./SocketContextCore";
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();
