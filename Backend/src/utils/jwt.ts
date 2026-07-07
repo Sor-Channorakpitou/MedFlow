@@ -15,6 +15,7 @@ export type AccessPayload = {
 
 export type RefreshPayload = {
     id: number;
+    nonce?: string;
 };
 
 export const generateAccessToken = (user: AccessPayload) => {

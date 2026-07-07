@@ -1,8 +1,12 @@
 // components/nurse/LiveQueue.jsx
-import React from 'react';
+import { useEffect } from 'react';
 import { Activity, Clock } from 'lucide-react';
 
 export default function LiveQueue({ queue, selectedId, onSelectPatient, urgencyMeta }) {
+
+  useEffect(() => {
+    console.log("Queue updated:", queue);
+  }, [queue]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:col-span-7">
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/75 px-4 py-3 text-left">

@@ -1,6 +1,7 @@
 import app from "./app.js";
 import { Server } from "socket.io";
 import http from "http";
+import { socketAuth } from "./sockets/auth.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -13,21 +14,35 @@ export const io = new Server(server, {
     },
 });
 
-io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
-    
-    socket.on("join-user", (userId: number) => {
-        socket.join(`user-${userId}`);
-    })
+io.use(socketAuth);
 
-    socket.on("join-role", (role: string) => {
-        socket.join(role);
-    });
+app.set("io", io);
+
+io.on("connection", (socket) => {
+    const user = socket.data.user;
+
+    console.log(
+        `Socket connected: ${socket.id} (${user.username})`
+    );
+
+
+    // Automatically join personal room
+    socket.join(`user-${user.id}`);
+
+
+    // Automatically join role room
+    socket.join(user.role);
+
+
+    console.log(
+        `Joined rooms: user-${user.id}, ${user.role}`
+    );
+
 
     socket.on("disconnect", () => {
         console.log(`Socket disconnected: ${socket.id}`);
     });
-})
+});
 
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

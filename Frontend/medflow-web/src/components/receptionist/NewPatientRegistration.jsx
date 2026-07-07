@@ -84,7 +84,7 @@ export default function NewPatientRegistration({ onCompleteRegistration }) {
 
   return (
     <div className="flex-1 flex gap-5 min-h-0 text-left w-full h-full items-start">
-      
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {/* FORM FILL DATA MODULE */}
       <form onSubmit={handleSubmit} className="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 h-full overflow-y-auto">
       <div className="border-b border-slate-100 pb-3">

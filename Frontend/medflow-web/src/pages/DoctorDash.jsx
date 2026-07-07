@@ -8,21 +8,31 @@ import SymptomsAndActions from "../components/doctor/SymptomsAndActions";
 import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry";
 import Header from "../components/Header";
 
+import { useWorkflow } from "../hooks/useWorkflow";
 
-import {
-  getAwaitingPatients,
-  getPatientHistory,
-  submitConsultation,
-} from "../services/consultationAPI";
+import { useToast } from "../hooks/useToast";
+import ToastContainer from "../components/ToastContainer";  
+
+// Retained purely for history line queries matching user selections
+import { getPatientHistory } from "../services/consultationAPI";
+import { getAllMedications } from "../services/medicationAPI";
 
 function DoctorDash() {
-  const [rawQueue, setRawQueue] = useState([]);
+  const {
+    consultationQueue: rawQueue,
+    loading: isLoading,
+    submitDoctorConsultation,
+  } = useWorkflow();
+
+  const { toasts, showToast, dismissToast } = useToast();
+
   const [activeQueueId, setActiveQueueId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [patientHistory, setPatientHistory] = useState([]);
 
   const [prescribedMeds, setPrescribedMeds] = useState([]);
+  const [allMedications, setAllMedications] = useState([]);
+
   const [soapNotes, setSoapNotes] = useState({
     subjective: "",
     objective: "",
@@ -43,80 +53,63 @@ function DoctorDash() {
     initials: "AT",
   };
 
-  const fetchQueueData = async () => {
-    try {
-      setIsLoading(true);
-      const data = await getAwaitingPatients();
-      setRawQueue(data?.queue || data || []);
-    } catch (err) {
-      console.error("Failed to load doctor consultation pipeline:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const reactiveQueue = useMemo(() => {
+    const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
 
-  useEffect(() => {
-  fetchQueueData();
-}, []);
+    return safeQueue
+      .map((item) => {
+        if (!item) return null;
 
+        const appointment = item.appointment || item;
+        const patient = item.patient || appointment?.patient;
+        const triage = item.triage || appointment?.triage;
 
+        if (!patient) return null;
 
-const reactiveQueue = useMemo(() => {
-  return rawQueue
-    .map((item) => {
-      const patient = item.patient;
-      const triage = item.triage;
+        const birthYear = patient.dateOfBirth
+          ? new Date(patient.dateOfBirth).getFullYear()
+          : new Date().getFullYear();
 
-      if (!patient || !triage) return null;
+        const currentYear = new Date().getFullYear();
 
-      const birthYear = patient.dateOfBirth
-        ? new Date(patient.dateOfBirth).getFullYear()
-        : new Date().getFullYear();
+        return {
+          id: item.id,
+          appointmentId: item.appointmentId || appointment?.id,
+          patientId: patient.id || item.patientId,
+          name: (patient.fullName || "Unknown Patient").toUpperCase(),
+          type: "WAITING",
+          time: item.createdAt
+            ? new Date(item.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "--:--",
+          reason: item.reason || appointment?.reason || "General Consultation",
+          age: `${currentYear - birthYear} Y.O.`,
+          gender:
+            patient.gender === "MALE"
+              ? "Male"
+              : patient.gender === "FEMALE"
+                ? "Female"
+                : "Unknown",
+          room: "Exam Room 3",
+          vitals: {
+            bloodPressure: triage?.bloodPressure || "",
+            heartRate: triage?.heartRate || "",
+            temperature: triage?.temperature || "",
+            weight: triage?.weight || "",
+            urgencyLevel: triage?.urgencyLevel || "MEDIUM",
+            note: triage?.note || "",
+          },
+        };
+      })
+      .filter(Boolean)
+      .filter((item) =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+  }, [rawQueue, searchQuery]);
 
-      const currentYear = new Date().getFullYear();
-
-      return {
-        id: item.id,
-        patientId: item.patientId,
-
-        name: patient.fullName.toUpperCase(),
-
-        type: "WAITING",
-
-        time: new Date(item.createdAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-
-        reason: item.reason,
-
-        age: `${currentYear - birthYear} Y.O.`,
-
-        gender:
-          patient.gender === "MALE"
-            ? "Male"
-            : patient.gender === "FEMALE"
-            ? "Female"
-            : "Unknown",
-
-        room: "Exam Room 3",
-
-        vitals: {
-          bloodPressure: triage.bloodPressure,
-          heartRate: triage.heartRate,
-          temperature: triage.temperature,
-          weight: triage.weight,
-          urgencyLevel: triage.urgencyLevel,
-          note: triage.note,
-        },
-      };
-    })
-    .filter(Boolean)
-    .filter((item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-}, [rawQueue, searchQuery]);
-
+  // Sync active id with first item if selection drops out
   useEffect(() => {
     if (reactiveQueue.length > 0 && !activeQueueId) {
       setActiveQueueId(reactiveQueue[0].id);
@@ -131,11 +124,30 @@ const reactiveQueue = useMemo(() => {
     );
   }, [reactiveQueue, activeQueueId]);
 
-  // Synchronized context setup logic for isolating and updating active charts
   useEffect(() => {
-    if (!activeCase) return;
+    const loadMedications = async () => {
+      try {
+        const data = await getAllMedications();
+        setAllMedications(data);
+      } catch (err) {
+        console.error("Error loading medication list:", err);
+      }
+    };
 
-    // 1. Flush past inputs so data doesn't cross-bleed between patient records
+    loadMedications();
+  }, []);
+
+  // 2. Fixed cross-contamination workspace flush
+  useEffect(() => {
+    if (!activeCase) {
+      // Clear data immediately if there is no active patient context
+      setPrescribedMeds([]);
+      setPatientHistory([]);
+      setSymptoms((prev) => prev.map((s) => ({ ...s, checked: false })));
+      setSoapNotes({ subjective: "", objective: "", assessment: "", plan: "" });
+      return;
+    }
+
     setPrescribedMeds([]);
     setSymptoms((prev) => prev.map((s) => ({ ...s, checked: false })));
 
@@ -152,12 +164,10 @@ const reactiveQueue = useMemo(() => {
       plan: "",
     });
 
-    // 3. Populate past data tracking logs
     getPatientHistory(activeCase.patientId)
       .then((res) => setPatientHistory(res?.history || res || []))
       .catch(() => setPatientHistory([]));
-
-  }, [activeQueueId]); 
+  }, [activeQueueId, activeCase?.id]); // Track activeCase change cleanly
 
   const handleSoapChange = (field, value) => {
     setSoapNotes((prev) => ({ ...prev, [field]: value }));
@@ -168,20 +178,27 @@ const reactiveQueue = useMemo(() => {
       prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s)),
     );
   };
-
   const handleAddMedication = (newMed) => {
+    // newMed MUST come from a dropdown of real medications from your database
+    if (!newMed.id && !newMed.medicationId) {
+       showToast("Please select a valid medication from the list.", "error");
+      return;
+    }
+
+    const incomingMedId = Number(newMed.medicationId || newMed.id);
+
     setPrescribedMeds((prev) => [
       ...prev,
       {
-        medicationId: Number(newMed.medicationId || newMed.id || 1),
+        medicationId: incomingMedId,
+        // We keep the name in React just to display it on the doctor's screen
+        name: newMed.name || newMed.medication_name,
         dosage: Number(newMed.dosage || 1),
         frequency: Number(newMed.frequency || 1),
         duration: String(newMed.duration || newMed.instruction || "7 Days"),
-        name: newMed.name || newMed.medication_name || "Unknown Drug",
       },
     ]);
   };
-
   const handleFinishSession = async () => {
     if (!activeCase) return;
 
@@ -190,60 +207,34 @@ const reactiveQueue = useMemo(() => {
         .filter((s) => s.checked)
         .map((s) => s.label);
 
-      const targetMedications = prescribedMeds.map((m) => {
-        const cleanNumber = (val, fallback = 1) => {
-          if (val === null || val === undefined || val === "") return fallback;
-          const parsed = Number(val);
-          return isNaN(parsed) ? fallback : parsed;
-        };
-
-        return {
-          medicationId: cleanNumber(m.medicationId || m.id, 1),
-          dosage: cleanNumber(m.dosage, 1),
-          frequency: cleanNumber(m.frequency, 1),
-          duration: m.duration || m.instruction || "7 Days",
-        };
-      });
-
-      const finalMedsPayload = targetMedications.length > 0 ? targetMedications : [];
-
+      // Format strictly for the backend schema
+      const targetMedications = prescribedMeds.map((m) => ({
+        medicationId: Number(m.medicationId),
+        dosage: Number(m.dosage), // Force Number
+        frequency: Number(m.frequency), // Force Number
+        duration: String(m.duration),
+      }));
       const consultationPayload = {
-        appointmentId: Number(activeCase.id),
+        appointmentId: Number(activeCase.appointmentId),
         patientId: Number(activeCase.patientId),
-        diagnosis: soapNotes.assessment || "General Clinical Follow-up",
+        diagnosis: soapNotes.assessment,
         notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),
-        symptoms: activeCheckedSymptoms,
-        medications: finalMedsPayload,
+        medications: targetMedications,
       };
 
-      console.log("Pushing sanitized payload to backend:", consultationPayload);
-
-      await submitConsultation(consultationPayload);
+      await submitDoctorConsultation(consultationPayload);
 
       setActiveQueueId("");
-      await fetchQueueData();
-
-      alert("Consultation finalized successfully. Case dispatched to pharmacy.");
+      showToast("Consultation finalized successfully. Case dispatched to pharmacy.", "success");
     } catch (err) {
       console.error("Consultation submission crash:", err);
-      alert("Failed to commit case records. Check network configurations.");
+      showToast("Please fill in all required fields.", "error");
     }
   };
 
-  useEffect(() => {
-  console.log("Raw Queue:", rawQueue);
-}, [rawQueue]);
-
-useEffect(() => {
-  console.log("Reactive Queue:", reactiveQueue);
-}, [reactiveQueue]);
-
-useEffect(() => {
-  console.log("Loading:", isLoading);
-}, [isLoading]);
-
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden px-4 py-3">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Header
         user={currentUser}
         searchPlaceholder="Filter clinical queue records..."
@@ -285,10 +276,10 @@ useEffect(() => {
             <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-1">
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm shrink-0">
                 <SoapNotesForm
-                className="h-full"
-                data={soapNotes} 
-                onChange={handleSoapChange}
-                 />
+                  className="h-full"
+                  data={soapNotes}
+                  onChange={handleSoapChange}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[300px]">
@@ -300,7 +291,10 @@ useEffect(() => {
                   />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full">
-                  <PrescriptionOrderEntry onAdd={handleAddMedication} />
+                  <PrescriptionOrderEntry
+                    onAdd={handleAddMedication}
+                    allMedications={allMedications}
+                  />
                 </div>
               </div>
             </div>
@@ -309,7 +303,8 @@ useEffect(() => {
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
           <p className="text-sm font-medium">
-            All outpatient medical consultations have been concluded for this session slice.
+            All outpatient medical consultations have been concluded for this
+            session slice.
           </p>
         </div>
       )}

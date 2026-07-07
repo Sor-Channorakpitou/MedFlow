@@ -1,6 +1,7 @@
-import { useEffect, useState, createContext, use } from "react";
+import { useEffect, useState, createContext } from "react";
 import * as authAPI from "../services/authAPI";
 import { setAccessToken } from "../services/api";
+import { connectSocket, disconnectSocket } from "../services/socket";
 
 export const AuthContext = createContext(null);
 
@@ -10,9 +11,19 @@ export function AuthProvider({ children }) {
 
     const initializeAuth = async () => {
         try {
+
+            // get new access token using refreshToken cookie
+            const tokenRes = await authAPI.refresh();
+
+            setAccessToken(tokenRes.accessToken);
+
+            // connect websocket
+            connectSocket(tokenRes.accessToken);
+
             const res = await authAPI.getCurrentUser();
-            setUser(res.user); 
-        } catch (err) { 
+            setUser(res.user);
+
+        } catch (err) {
             setUser(null);
         } finally {
             setLoading(false);
@@ -21,22 +32,28 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         initializeAuth();
-    }, []);
+    }, []); // bootstraps auth once on app load — no dependency on isAuthenticated, this IS what determines it
 
     const login = async (credentials) => {
         const res = await authAPI.login(credentials);
-        setAccessToken(res.accessToken); 
+
+        // save access token in memory
+        setAccessToken(res.accessToken);
+
+        // connect web socket
+        connectSocket(res.accessToken);
 
         const userRes = await authAPI.getCurrentUser();
         setUser(userRes.user);
-        return userRes.user; 
+        return userRes.user;
     };
 
     const logout = async () => {
         try {
             await authAPI.logout();
         } finally {
-            setAccessToken(null); 
+            disconnectSocket();
+            setAccessToken(null);
             setUser(null);
         }
     };
@@ -45,9 +62,8 @@ export function AuthProvider({ children }) {
         setUser((prev) => ({
             ...prev,
             ...updates,
-        }
-    ));
-};
+        }));
+    };
 
     const value = {
         user,

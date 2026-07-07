@@ -182,6 +182,7 @@ function ReceptionistDash() {
 
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <Header
         searchPlaceholder="Search..."
         searchValue={searchQuery}

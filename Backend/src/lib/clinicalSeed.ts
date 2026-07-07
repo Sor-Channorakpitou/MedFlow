@@ -51,7 +51,7 @@ export const seedClinicalData = async () => {
       });
     }
 
-    // 5. Check or create Patients using phone lookup instead of hardcoded ids
+
     let patientA = await prisma.patient.findFirst({ where: { phone: "011222333" } });
     if (!patientA) {
       patientA = await prisma.patient.create({
@@ -114,3 +114,4 @@ export const seedClinicalData = async () => {
 };
 
 seedClinicalData();
+

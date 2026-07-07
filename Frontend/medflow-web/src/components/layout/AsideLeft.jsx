@@ -1,11 +1,11 @@
 // src/components/layout/AsideLeft.jsx
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import SidebarItem from './SidebarItem';
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import SidebarItem from "./SidebarItem";
 import { useAuth } from "../../hooks/useAuth";
 import icon from "../../assets/icon.png";
-import { mainNavItems, bottomNavItems } from './sidebarConfig';
-import { ROLE_THEMES } from '../../constants/roles';
+import { mainNavItems, bottomNavItems } from "./sidebarConfig";
+import { ROLE_THEMES } from "../../constants/roles";
 
 const AsideLeft = ({ onLogout, isOpen }) => {
   const navigate = useNavigate();
@@ -14,11 +14,11 @@ const AsideLeft = ({ onLogout, isOpen }) => {
 
   // Determine active item based on the current URL path 
   const currentPath = location.pathname;
-  
+
   const handleItemClick = (item) => {
     if (item.isAction) {
       // Clear auth tokens here if necessary
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
     navigate(item.path);
@@ -63,26 +63,40 @@ const AsideLeft = ({ onLogout, isOpen }) => {
           </nav>
         </div>
 
-        {/* Settings / Bottom Actions */}
-        <div className="flex flex-col gap-1">
-          <hr className="border-slate-200 my-2" />
-          {bottomNavItems.map((item) => {
-            const isActive = currentPath === item.path;
-            const defaultTheme = { bg: 'bg-slate-200', text: 'text-slate-900', iconColor: 'text-slate-900' };
+        {/* Dynamic Navigation Links */}
+        <nav className="flex flex-col gap-1">
+          {mainNavItems
+            .filter((item) => item.label.toUpperCase() === user?.role.name)
+            .map((item) => {
+              const isActive = currentPath === item.path;
+              // Fallback to pharmacist theme if not specified
+              const currentTheme =
+                ROLE_THEMES[item.id] || ROLE_THEMES.pharmacist;
 
-            return (
-              <SidebarItem
-                key={item.id}
-                label={item.label}
-                icon={item.icon}
-                isActive={isActive}
-                theme={defaultTheme}
-                onClick={() => handleItemClick(item)}
-              />
-            );
-          })}
-        </div>
-      </aside>
+              return (
+                <SidebarItem
+                  key={item.id}
+                  label={item.label}
+                  icon={item.icon}
+                  isActive={isActive}
+                  theme={currentTheme}
+                  onClick={() => handleItemClick(item)}
+                />
+              );
+            })}
+        </nav>
+      </div>
+
+      {/* Settings / Bottom Actions */}
+      <div className="flex flex-col gap-1">
+        <hr className="border-slate-200 my-2" />
+        {bottomNavItems.map((item) => {
+          const isActive = currentPath === item.path;
+          const defaultTheme = {
+            bg: "bg-slate-200",
+            text: "text-slate-900",
+            iconColor: "text-slate-900",
+          };
 
     </>
   );

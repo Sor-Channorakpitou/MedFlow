@@ -65,12 +65,14 @@ export const dispensePrescription = async (
     const result =
       await prescriptionService.dispensePrescription(id);
 
+      req.app.get("io")?.emit("workflow_changed");
     res.status(200).json({
       success: true,
       message:
         "Prescription dispensed successfully.",
       prescription: result
     });
+
 
   } catch (error) {
     next(error);

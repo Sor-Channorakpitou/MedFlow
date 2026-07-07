@@ -292,17 +292,18 @@ function AdminDash() {
         onSearchChange={setSearch}
       />
       {/* Container wrapper adjusting consistent spacing layout defaults */}
-      <main className="flex-1 p-6 space-y-6">
-        
+      <main className="flex-1 p-4 md:p-6 space-y-6">
         {/* 1. Admin Header Panel */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-gray-200 pb-5">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Admin Analytics</h1>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+              Admin Analytics
+            </h1>
             <p className="text-sm text-gray-500 mt-1">
               Real-time clinical performance and staff orchestration dashboard.
             </p>
           </div>
-          
+
           {/* Workspace controls */}
           <div className="flex items-center gap-3 self-end sm:self-auto">
             <div className="relative" ref={timeframeRef}>

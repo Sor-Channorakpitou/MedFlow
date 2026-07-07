@@ -7,7 +7,7 @@ import {
   TrendingUp, 
   AlertCircle 
 } from 'lucide-react';
-import { useWorkflow } from '../../context/WorkflowContext';
+import { useWorkflow } from '../../hooks/useWorkflow';
 
 export default function ReceptionSidePanel({ setSubView, stats }) {
   return (

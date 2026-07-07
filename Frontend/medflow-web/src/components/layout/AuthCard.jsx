@@ -21,6 +21,7 @@ export default function AuthCard() {
     setError("");
 
     try {
+      // 1. Authenticate and set tokens
       await login({ email, password });
 
       const res = await getCurrentUser();
