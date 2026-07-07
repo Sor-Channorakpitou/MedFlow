@@ -103,10 +103,19 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
       const prescription = await tx.prescription.create({
         data: {
-          patientId: verifiedPatientId,
-          userId: doctorId,
-          medicalRecordId: record.id,
           status: "PENDING",
+          medicalRecord: {
+            connect: { id: record.id }
+          },
+          patient: {
+            connect: { id: verifiedPatientId }
+          },
+          user: {
+            connect: { id: doctorId }
+          },
+          appointment: {
+            connect: { id: data.appointmentId }
+          }
         },
       });
 

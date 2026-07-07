@@ -85,7 +85,7 @@ function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
         <div className="grid grid-cols-3 gap-2">
           <div className="flex flex-col gap-1">
             <input
-              type="number"
+              type="text"
               value={dose}
               onChange={(e) => setDose(e.target.value)}
               placeholder="Dose (mg)"
