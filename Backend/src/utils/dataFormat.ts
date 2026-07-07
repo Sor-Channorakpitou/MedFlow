@@ -1,3 +1,5 @@
+import appointment from "../config/schemas/appointment.schema";
+
 export const formatDateOnly = (date?: Date | string | null | undefined) => {
   if (!date) return null;
 
@@ -20,6 +22,8 @@ export const toUserDTO = (user: any) => ({
     name: user.name,
     phone: user.phone,
     roleId: user.roleId,
+    appointments: user.appointments,
+    patients: user.appointments?.map((a: any) => a.patient),
     role: user.role
         ? {
             id: user.role.id,

@@ -4,7 +4,6 @@ import cloudinary from "../lib/cloudinary.js";
 import { uploadToCloudinary } from "../utils/cloudinaryUpload.js";
 import { toUserDTO } from "../utils/dataFormat.js";
 import { validatePassword } from "../utils/passwordValidator.js";
-import { tr } from "zod/locales";
 
 type CreateUserInput = {
     email: string;

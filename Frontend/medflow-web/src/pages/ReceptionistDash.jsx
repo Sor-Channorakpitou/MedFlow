@@ -4,8 +4,8 @@ import NewPatientRegistration from '../components/receptionist/NewPatientRegistr
 import PatientCheckout from '../components/receptionist/PatientCheckout';
 import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
 import Header from '../components/Header';
-import { getAllAppointments } from '../services/appointmentAPI';
-import { getAllQueues } from '../services/queueAPI';
+import { getAllAppointments, updateAppointment } from '../services/appointmentAPI';
+import { getAllQueues, updateQueue } from '../services/queueAPI';
 
 function ReceptionistDash() {
 
@@ -69,6 +69,61 @@ function ReceptionistDash() {
     load();
   }, []);
 
+  const isToday = (date) => {
+    const d = new Date(date);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  };
+
+  const handleCheckInAction = async (queue) => {
+    if (!queue || queue.status === "IN_PROGRESS") return;
+
+    try {
+      await updateQueue(queue.id, {
+        status: "IN_PROGRESS",
+        stage: "RECEPTION",
+      });
+
+      // optional UI update
+      setQueueList(prev =>
+        prev.map(q =>
+          q.id === queue.id
+            ? { ...q, status: "IN_PROGRESS", stage: "RECEPTION" }
+            : q
+        )
+      );
+
+    } catch (err) {
+      console.error("Check-in failed:", err);
+    }
+  };
+
+  const handleCheckOutAction = async (queue, appointmentId) => {
+    if (!queue) return;
+
+    try {
+      await updateQueue(queue.id, {
+        status: "COMPLETED",
+        stage: "COMPLETED",
+      });
+
+      await updateAppointment(appointmentId, {
+        status: "COMPLETED",
+      });
+
+      setQueueList(prev => 
+        prev.map(q => q.id === queue.id ? { ...q, status: "COMPLETED", stage: "COMPLETED" } : q )
+      );
+
+    } catch (err) {
+      console.error("Check-out failed:", err);
+    }
+  };
+
   const [subView, setSubView] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCheckoutAppId, setSelectedCheckoutAppId] = useState('');
@@ -111,31 +166,24 @@ function ReceptionistDash() {
 
   const financialMetrics = useMemo(() => {
     const checkoutQueue = queueList.filter(q => q.stage === 'BILLING');
-    console.log(appointmentList);
 
-    // const latestTransaction = [...appointmentList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-    // console.log(latestTransaction);
+    const latestTransaction = [...appointmentList].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+    const total = appointmentList.reduce((sum, app) => sum + Number(app.invoice?.totalAmount ?? 0),0).toFixed(2);
 
     return {
       pendingInvoices: checkoutQueue.length,
-      collectionsToday: `$${appointmentList
-        .reduce((sum, app) => sum + app.invoice ? app.invoice?.totalAmount : 0, 0)
-        .toFixed(2)}`,
+      collectionsToday: `$${total}`,
       transactions: [
-        // { name: latestTransaction.patientName ,  type: latestTransaction.invoice.paymentMethod , amount: latestTransaction.invoice.totalAmount }
+        { name: latestTransaction?.patient.fullName ,  type: latestTransaction?.invoice?.paymentMethod , amount: latestTransaction?.invoice.totalAmount }
       ]
     };
   }, [queueList]);
 
-  const handleCheckInAction = (apt) => {
-    if (apt.status === "Checked In") return;
-    checkInPatient(apt.id);
-  };
-
   return (
     <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
       <Header
-        searchPlaceholder="Search arriving patient manifests..."
+        searchPlaceholder="Search..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -144,9 +192,9 @@ function ReceptionistDash() {
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           
           {/* Subview Nav Switcher Links */}
-          <div className="flex items-center gap-3 mb-4 text-xs font-semibold">
+          <div className="flex items-center gap-8 mb-4 text-sm font-semibold">
             <button onClick={() => setSubView('list')} className={`pb-1 border-b-2 transition-all ${subView === 'list' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
-              Arrival Manifest
+              Arrival
             </button>
             <button onClick={() => setSubView('register')} className={`pb-1 border-b-2 transition-all ${subView === 'register' ? 'border-teal-700 text-teal-800 font-bold' : 'border-transparent text-slate-400'}`}>
               New Registration Form
@@ -164,12 +212,17 @@ function ReceptionistDash() {
               <NewPatientRegistration onCompleteRegistration={() => setSubView('list')} />
             )}
             {subView === 'checkout' && (
-              <PatientCheckout selectedAppId={selectedCheckoutAppId} onSelectAppId={setSelectedCheckoutAppId} onFinalizeCheckout={finalizePatientCheckout} />
+              <PatientCheckout selectedAppId={selectedCheckoutAppId} onSelectAppId={setSelectedCheckoutAppId} onFinalizeCheckout={handleCheckOutAction} />
             )}
 
-            <div className='pl-10'>
-              <ReceptionSidePanel setSubView={setSubView} stats={financialMetrics} /> 
-            </div>
+            {subView === 'checkout' && (
+              <div className="pl-10">
+                <ReceptionSidePanel 
+                  setSubView={setSubView} 
+                  stats={financialMetrics} 
+                /> 
+              </div>
+            )}
 
           </div>
         </div> 
