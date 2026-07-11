@@ -8,7 +8,7 @@ import { useToast } from "../hooks/useToast";
 import ToastContainer from "../components/ToastContainer";
 import { dispensePrescription } from "../services/prescriptionAPI";
 
-import { useWorkflow } from "../hooks/useWorkflow";
+import { useWorkflow } from "../hooks/useWorkFlow";
 import { updateQueue } from "../services/queueAPI";
 
 function PharmacistDash() {

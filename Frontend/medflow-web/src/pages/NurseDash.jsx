@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, TimerReset, TriangleAlert, Users, Minus, CircleDot } from "lucide-react";
-import { useWorkflow } from "../hooks/useWorkflow";
+import { useWorkflow } from "../hooks/useWorkFlow";
 import { claimTriagePatient, createTriageRecord, updateTriageRecord } from '../services/triageAPI';
 import { SPECIALTIES } from '../constants/specialties';
 import MetricCard from "../components/nurse/MetricCard";
