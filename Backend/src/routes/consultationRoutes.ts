@@ -5,10 +5,32 @@ import { authorize } from "../middlewares/roleMiddleware.js";
 
 const router = Router();
 
-const emitWorkflowChange = (req: any, res: any, next: any) => {
-  req.app.get("io")?.emit("workflow_changed");
-  next();
-};
+/**
+ * @swagger
+ * /consultations/queue/{queueId}/claim:
+ *   patch:
+ *     summary: Doctor claims a waiting consultation patient
+ *     tags:
+ *       - Consultation
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: queueId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Patient claimed successfully
+ *       400:
+ *         description: Invalid queue ID
+ *       404:
+ *         description: Queue not found
+ *       409:
+ *         description: Patient already claimed
+ */
+router.patch("/queue/:queueId/claim", authenticate, authorize(["ADMIN", "DOCTOR"]), consultController.claimPatient);
 
 /**
  * @swagger
@@ -44,7 +66,7 @@ const emitWorkflowChange = (req: any, res: any, next: any) => {
  *       401:
  *         description: Unauthorized
  */
-router.get("/queue", authenticate, authorize(["ADMIN", "DOCTOR"]), consultController.getQueue);
+router.get("/queue", authenticate, authorize(["ADMIN", "DOCTOR", "NURSE", "RECEPTIONIST"]), consultController.getQueue);
 
 /**
  * @swagger
@@ -186,7 +208,7 @@ router.get("/history/:patientId", authenticate, authorize(["ADMIN", "DOCTOR"]), 
  *       401:
  *         description: Unauthorized
  */
-router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]), emitWorkflowChange, consultController.createConsultation);
+router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]),  consultController.createConsultation);
 
 /**
  * @swagger
@@ -227,6 +249,6 @@ router.post("/", authenticate, authorize(["ADMIN","DOCTOR"]), emitWorkflowChange
  *       404:
  *         description: Medical record tied to this appointment not found
  */
-router.put("/:appointmentId", authenticate, authorize(["ADMIN","DOCTOR"]), emitWorkflowChange, consultController.updateExistingConsultation);
+router.put("/:appointmentId", authenticate, authorize(["ADMIN","DOCTOR"]), consultController.updateExistingConsultation);
 
 export default router;

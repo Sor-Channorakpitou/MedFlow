@@ -1,21 +1,19 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 function PatientVolumeChart({ appointments = [] }) {
   const intervals = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
 
-  // Dynamically calculate SVG coordinates based on total appointments
-  // (In a production app, you would bucket these by the actual appointment_date timestamp)
   const { areaPath, strokePath } = useMemo(() => {
     const baseVolume = appointments.length;
     // Generate simple dynamic heights based on total volume
     const points = [
       Math.max(130 - (baseVolume * 2), 20),
       Math.max(100 - (baseVolume * 5), 20),
-      Math.max(60 - (baseVolume * 8), 20), // Peak mid-day
+      Math.max(60 - (baseVolume * 8), 20), 
       Math.max(85 - (baseVolume * 4), 20),
       Math.max(110 - (baseVolume * 2), 20),
       120,
-      140 // Taper off
+      140 
     ];
 
     const sPath = `M 0 ${points[0]} L 100 ${points[1]} L 200 ${points[2]} L 300 ${points[3]} L 400 ${points[4]} L 500 ${points[5]} L 600 ${points[6]}`;

@@ -1,17 +1,35 @@
 import type { Request, Response, NextFunction } from "express";
-import { createQueue, getAllQueues, getQueueById, updateQueue, deleteQueue, moveQueueStage } from "../services/queueService.js";
+import { createQueue, getAllQueues, getQueueById, updateQueue, deleteQueue, moveQueueStage, generateQueueNumber } from "../services/queueService.js";
+import prisma from "../lib/prisma.js";
+import { SOCKET_EVENTS } from "../sockets/socketEvents.js";
 
 export const createQueueController = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { patientId, stage, status, queueNumber, userId } = req.body;
+    const { patientId, stage, status, currentUserId, appointmentId, requiredSpecialtyId } = req.body;
+    let { queueNumber } = req.body;
+
+    // Auto-generate queue number if not supplied (or supplied as 0/null)
+    if (!queueNumber) {
+      queueNumber = await prisma.$transaction(async (tx) => generateQueueNumber(tx));
+    }
 
     const queue = await createQueue({
       patientId,
       stage,
       status,
       queueNumber,
-      userId,
+      currentUserId,
+      ...(appointmentId !== undefined ? { appointmentId: Number(appointmentId) } : {}),
+      ...(requiredSpecialtyId !== undefined ? { requiredSpecialtyId: Number(requiredSpecialtyId) } : {}),
     });
+
+    // Notify the relevant clinical room that a patient has arrived
+    const io = req.app.get("io");
+    if (io && stage === "DOCTOR") {
+      io.to("DOCTOR").emit(SOCKET_EVENTS.PATIENT_MOVED_STAGE, { queue });
+    } else if (io && stage === "TRIAGE") {
+      io.to("NURSE").emit(SOCKET_EVENTS.NURSE_AVAILABILITY_UPDATED);
+    }
 
     return res.status(201).json(queue);
   } catch (error) {
@@ -57,15 +75,19 @@ export const updateQueueController = async (req: Request, res: Response, next: N
       return res.status(400).json({ message: "Invalid queue ID" });
     }
 
-    const { patientId, stage, status, queueNumber, userId } = req.body;
+    const { stage, status, queueNumber, currentUserId } = req.body;
 
     const queue = await updateQueue(id, {
-      patientId,
       stage,
       status,
       queueNumber,
-      userId,
+      currentUserId,
     });
+
+    const io = req.app.get("io");
+      if (io && (stage === "COMPLETED" || status === "COMPLETED")) {
+        io.to("RECEPTIONIST").emit(SOCKET_EVENTS.QUEUE_UPDATED, { queue });
+    }
 
     return res.json(queue);
   } catch (error) {

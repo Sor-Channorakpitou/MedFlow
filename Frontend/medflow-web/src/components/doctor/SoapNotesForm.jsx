@@ -1,7 +1,6 @@
-import React from 'react';
 import { FileText } from 'lucide-react';
 
-function SoapNotesForm({ data, onChange }) {
+function SoapNotesForm({ data, onChange, needsFollowUp, onFollowUpChange }) {
   const fields = [
     { id: 'subjective', label: 'Subjective', placeholder: 'Symptom descriptions, chief complaints...' },
     { id: 'objective', label: 'Objective', placeholder: 'Vital stats, physical observations, labs...' },
@@ -30,6 +29,20 @@ function SoapNotesForm({ data, onChange }) {
           </div>
         ))}
       </div>
+
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+        <input
+          type="checkbox"
+          id="needsFollowUp"
+          checked={needsFollowUp}
+          onChange={(e) => onFollowUpChange(e.target.checked)}
+          className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+        />
+        <label htmlFor="needsFollowUp" className="text-xs font-semibold text-slate-700">
+          Patient needs follow-up appointment
+        </label>
+      </div>
+
     </div>
   );
 }

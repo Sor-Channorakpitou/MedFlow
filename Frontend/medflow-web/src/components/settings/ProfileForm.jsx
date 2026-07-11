@@ -1,4 +1,3 @@
-import React from 'react';
 import { uploadProfileImage } from '../../services/userAPI';
 import { User, Lock, Upload } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';

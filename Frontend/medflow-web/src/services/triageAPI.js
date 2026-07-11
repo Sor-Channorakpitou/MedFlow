@@ -2,7 +2,6 @@ import api from './api';
 
 const RESOURCE_URL = '/triage'; 
 
-
 export const createTriageRecord = async (triageData) => {
   const response = await api.post(RESOURCE_URL, triageData);
   return response.data;
@@ -25,4 +24,11 @@ export const updateTriageRecord = async (appointmentId, triageData) => {
   return response.data;
 };
 
-
+/**
+ * Nurse claims a waiting triage patient.
+ * PATCH /triage/queue/:queueId/claim
+ */
+export const claimTriagePatient = async (queueId) => {
+  const response = await api.patch(`${RESOURCE_URL}/queue/${queueId}/claim`);
+  return response.data;
+};

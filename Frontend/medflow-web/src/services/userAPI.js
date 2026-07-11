@@ -11,6 +11,11 @@ export const getAllUsers = async () => {
     return res.data;
 };
 
+export const getAvailableNursesName = async () => {
+    const res = await api.get(`${API_BASE_URL}/nurses`);
+    return res.data;
+};
+
 export const createUser = async (data) => {
     const res = await api.post(`${API_BASE_URL}`, data);
     return res.data;

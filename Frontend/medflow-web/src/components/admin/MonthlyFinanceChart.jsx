@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from "react";
 
 function MonthlyProfitChart({ invoices = [] }) {
   const { areaPath, strokePath, labels, totalProfit } = useMemo(() => {

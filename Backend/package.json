@@ -9,8 +9,8 @@
     "predev": "kill-port 3000",
     "dev": "nodemon",
     "start": "node dist/server.js",
-    "seed": "node dist/lib/clinicalSeed.js",
-    "seed:dev": "tsx src/lib/clinicalSeed.ts"
+    "seed": "tsx src/lib/comprehensiveSeed.ts",
+    "seed:build": "node dist/lib/comprehensiveSeed.js"
   },
   "keywords": [],
   "author": "",

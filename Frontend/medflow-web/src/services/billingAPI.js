@@ -18,6 +18,6 @@ export const updateInvoiceById = async (id, invoiceData) => {
 };
 
 export const issuePayment = async (id) => {
-    const res = await api.patch(`${API_BASE_URL}/${id}/issueInvoicePayment`);
+    const res = await api.patch(`${API_BASE_URL}/${id}/issueInvoicePayment`, { PaymentStatus: "PAID" });
     return res.data;
 };

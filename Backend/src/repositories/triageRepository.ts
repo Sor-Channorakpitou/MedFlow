@@ -9,9 +9,14 @@ const prisma = new PrismaClient();
 export class TriageRepository {
   async createTriage(data: CreateTriageInput) {
     return prisma.$transaction(async (tx) => {
+      const appointmentId = data.appointmentId;
+      if (appointmentId === null || appointmentId === undefined) {
+        throw new Error("APPOINTMENT_ID_REQUIRED");
+      }
+
       const appointment = await tx.appointment.findUnique({
         where: {
-          id: data.appointmentId,
+          id: appointmentId,
         },
       });
 
@@ -21,7 +26,7 @@ export class TriageRepository {
 
       const existing = await tx.triage.findUnique({
         where: {
-          appointmentId: data.appointmentId,
+          appointmentId,
         },
       });
 
@@ -31,7 +36,7 @@ export class TriageRepository {
 
       const triage = await tx.triage.create({
         data: {
-          appointmentId: data.appointmentId,
+          appointmentId,
           userId: data.userId,
           bloodPressure: data.bloodPressure ?? null,
           temperature: data.temperature ?? null,
@@ -56,13 +61,14 @@ export class TriageRepository {
         },
       });
 
-      await tx.queue.update({
+      await tx.queue.updateMany({
         where: {
           patientId: appointment.patientId,
         },
         data: {
           stage: "DOCTOR",
           status: "WAITING",
+          currentUserId: null,
         },
       });
 
@@ -81,20 +87,30 @@ export class TriageRepository {
   }
 
   async updateTriage(triageId: number, data: UpdateTriageInput) {
+    const updateData: Record<string, any> = {};
+
+    if (data.bloodPressure !== undefined) {
+      updateData.bloodPressure = data.bloodPressure;
+    }
+    if (data.temperature !== undefined) {
+      updateData.temperature = data.temperature;
+    }
+    if (data.weight !== undefined) {
+      updateData.weight = data.weight;
+    }
+    if (data.heartRate !== undefined) {
+      updateData.heartRate = data.heartRate;
+    }
+    if (data.urgencyLevel !== undefined) {
+      updateData.urgencyLevel = data.urgencyLevel as TriageStatus;
+    }
+    if (data.note !== undefined) {
+      updateData.note = data.note;
+    }
+
     return prisma.triage.update({
       where: { id: triageId },
-      data: {
-        bloodPressure:
-          data.bloodPressure !== undefined ? data.bloodPressure : undefined,
-        temperature:
-          data.temperature !== undefined ? data.temperature : undefined,
-        weight: data.weight !== undefined ? data.weight : undefined,
-        heartRate: data.heartRate !== undefined ? data.heartRate : undefined,
-        urgencyLevel: data.urgencyLevel
-          ? (data.urgencyLevel as TriageStatus)
-          : undefined,
-        note: data.note !== undefined ? data.note : undefined,
-      },
+      data: updateData,
       include: {
         appointment: { include: { patient: true } },
         user: { select: { id: true, name: true, email: true } },

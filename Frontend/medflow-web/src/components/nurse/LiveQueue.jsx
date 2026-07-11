@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { Activity, Clock } from 'lucide-react';
 
-export default function LiveQueue({ queue, selectedId, onSelectPatient, urgencyMeta }) {
+export default function LiveQueue({ queue, selectedId, onSelectPatient, urgencyMeta, claimedId, onClaim }) {
 
   useEffect(() => {
     console.log("Queue updated:", queue);
@@ -72,7 +72,7 @@ export default function LiveQueue({ queue, selectedId, onSelectPatient, urgencyM
                     <button
                       type="button"
                       onClick={() => onSelectPatient(patient)}
-                      className={`inline-flex items-center gap-1 font-bold px-3 py-1.5 rounded-lg text-[11px] transition-all ${
+                      className={`inline-flex items-center gap-1 font-bold px-3 py-1.5 rounded-lg text-[11px] transition-all mr-1 ${
                         isSelected 
                           ? 'bg-teal-700 text-white shadow-sm' 
                           : 'border border-teal-600 text-teal-700 bg-white hover:bg-teal-50'
@@ -81,6 +81,20 @@ export default function LiveQueue({ queue, selectedId, onSelectPatient, urgencyM
                       <Activity className="h-3 w-3" />
                       {isSelected ? 'Active Triage' : 'Load Case'}
                     </button>
+                    {!isSelected && patient.wait === 'WAITING' && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onClaim(patient); }}
+                        className="inline-flex items-center gap-1 font-bold px-3 py-1.5 rounded-lg text-[11px] bg-amber-500 text-white hover:bg-amber-600 transition-all"
+                      >
+                        Claim
+                      </button>
+                    )}
+                    {patient.wait === 'PROCESSING' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-teal-600 bg-teal-50 rounded-lg">
+                        Claimed
+                      </span>
+                    )}
                   </td>
                 </tr>
               );

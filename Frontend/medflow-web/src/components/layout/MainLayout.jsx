@@ -1,22 +1,18 @@
-import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import AsideLeft from './AsideLeft';
 
-function MainLayout() {
-  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    navigate('/login');
-  };
+function MainLayout() {
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-100">
-      {/* Sidebar now only exists inside authenticated pages */}
-      <AsideLeft onLogout={handleLogout} />
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f4f6f8]">
+      {/* Persistent sidebar — always visible, no toggle */}
+      <AsideLeft />
 
-      {/* Dynamic workspace area on the right */}
-      <main className="flex-1 h-full overflow-y-auto p-6">
-        <Outlet /> 
+      {/* Page content */}
+      <main className="flex-1 h-full overflow-y-auto flex flex-col min-w-0">
+        <Outlet  />
       </main>
     </div>
   );

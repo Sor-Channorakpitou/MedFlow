@@ -1,11 +1,53 @@
 import express from "express";
 import { adminResetPasswordUserById, createUser, deactivateUserById, deleteUserById,
-getAllUsers, getUserById, updateUserById, uploadProfileImage, activateUserById } from "../controllers/userController.js";
+getAllUsers, getUserById, updateUserById, uploadProfileImage, activateUserById, 
+getAllNursesName, 
+getAllDoctorsName,
+getAllRoles} from "../controllers/userController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { authorize } from "../middlewares/roleMiddleware.js";
 import upload from "../middlewares/upload.js";
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /users/nurses:
+ *   get:
+ *     summary: Get all nurses
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: List of nurses
+ */
+router.get('/nurses', authenticate, authorize(["RECEPTIONIST"]), getAllNursesName);
+
+/**
+ * @swagger
+ * /users/doctors:
+ *   get:
+ *     summary: Get all doctors
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: List of doctors
+ */
+router.get('/doctors', authenticate, authorize(["RECEPTIONIST"]), getAllDoctorsName);
+
+/**
+ * @swagger
+ * /users/roles:
+ *   get:
+ *     summary: Get all roles
+ *     tags: [Users]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: List of roles
+ */
+router.get('/roles', authenticate, authorize(["ADMIN"]), getAllRoles);
 
 /**
  * @swagger
@@ -256,5 +298,7 @@ router.post('/profile/upload', authenticate, upload.single("image"), uploadProfi
  *         description: User not found
  */
 router.post('/:id/activate', authenticate, authorize(["ADMIN"]), activateUserById);
+
+
 
 export default router;

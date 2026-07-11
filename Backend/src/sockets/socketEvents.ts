@@ -2,9 +2,8 @@ export const SOCKET_EVENTS = {
 
   // RECEPTIONIST FLOW
   PATIENT_REGISTERED: "patient:registered",
-  PATIENT_CHECKED_IN: "patient:checked_in",
-  APPOINTMENT_CREATED: "appointment:created",
   BILL_GENERATED: "billing:generated",
+  NURSE_AVAILABILITY_UPDATED: "nurse:availability_updated",
 
 
   // NURSE FLOW
@@ -14,9 +13,7 @@ export const SOCKET_EVENTS = {
 
 
   // DOCTOR FLOW
-  CONSULTATION_STARTED: "consultation:started",
   DIAGNOSIS_ADDED: "consultation:diagnosis_added",
-  CLINICAL_NOTE_ADDED: "consultation:note_added",
   PRESCRIPTION_CREATED: "prescription:created",
 
 
@@ -24,18 +21,7 @@ export const SOCKET_EVENTS = {
   MEDICATION_DISPENSED: "prescription:dispensed",
 
 
-  // ADMIN FLOW
-  STAFF_CREATED: "staff:created",
-  STAFF_UPDATED: "staff:updated",
-  STAFF_DEACTIVATED: "staff:deactivated",
-  STAFF_ACTIVATED: "staff:activated",
-  SYSTEM_STATS_UPDATED: "admin:stats_updated",
-
-
   // CORE WORKFLOW (IMPORTANT PIPELINE EVENT)
   PATIENT_MOVED_STAGE: "patient:moved_stage",
 
-
-  // NOTIFICATIONS (OPTIONAL GLOBAL USE)
-  NOTIFICATION: "notification"
-};
+} as const;

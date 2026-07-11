@@ -10,6 +10,13 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         });
     }
 
+    if (err.message === "ACCOUNT_DEACTIVATED") {
+        return res.status(403).json({
+            success: false,
+            message: "Your account has been deactivated. Please contact an administrator."
+        });
+    }
+
     if (err.message === "NO_REFRESH_TOKEN") {
         return res.status(401).json({ 
             success: false,
@@ -24,9 +31,23 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         });
     }
 
-    if (err.message === "NO_RESOURCES") {
+    if (err.message === "USER_NOT_FOUND") {
         return res.status(404).json({
             success: false,
+            message: "User not found"
+        });
+    }
+
+    if (err.message === "MISSING_REQUIRED_FIELDS") {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields"
+        });
+    }
+
+    if (err.message === "NO_RESOURCES") {
+        return res.status(200).json({
+            success: true,
             message: "No resources"
         });
     }
@@ -41,7 +62,7 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
     if (err.message === "PATIENT_ALREADY_EXISTS") {
         return res.status(409).json({
             success: false,
-            message: "Email already exists"
+            message: "Patient already exists"
         });
     }
 
@@ -119,6 +140,62 @@ export const errorHandler = ( err: any, req: Request, res: Response, next: NextF
         return res.status(409).json({
             success: false,
             message: "Invoice already marked as paid"
+        });
+    }
+
+    if (err.message === "PATIENT_ALREADY_IN_QUEUE") {
+        return res.status(409).json({
+            success: false,
+            message: "Patient is already in the queue"
+        });
+    }
+
+    if (err.message === "QUEUE_NOT_FOUND") {
+        return res.status(404).json({
+            success: false,
+            message: "Queue not found"
+        });
+    }
+
+    if (err.message === "QUEUE_NOT_IN_TRIAGE") {
+        return res.status(409).json({
+            success: false,
+            message: "Queue entry is not in the triage stage"
+        });
+    }
+
+    if (err.message === "QUEUE_NOT_IN_DOCTOR_STAGE") {
+        return res.status(409).json({
+            success: false,
+            message: "Queue entry is not in the doctor stage"
+        });
+    }
+
+    if (err.message === "QUEUE_ALREADY_CLAIMED") {
+        return res.status(409).json({
+            success: false,
+            message: "This patient has already been claimed"
+        });
+    }
+
+    if (err.message === "QUEUE_NOT_CLAIMED") {
+        return res.status(409).json({
+            success: false,
+            message: "Patient has not been claimed by this nurse yet"
+        });
+    }
+
+    if (err.message === "USER_ALREADY_INACTIVE") {
+        return res.status(409).json({
+            success: false,
+            message: "User is already inactive"
+        });
+    }
+
+    if (err.message === "USER_ALREADY_ACTIVE") {
+        return res.status(409).json({
+            success: false,
+            message: "User is already active"
         });
     }
 

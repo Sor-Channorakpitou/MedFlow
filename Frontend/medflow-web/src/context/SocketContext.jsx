@@ -1,13 +1,14 @@
-import { createContext, useEffect } from "react";
+import {  useEffect } from "react";
 import  { useAuth } from "../hooks/useAuth";
-import { socket } from "../services/socket";
+import { socket, connectSocket } from "../services/socket";
+import { SocketContext } from "./SocketContextCore";
 
-export const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
     const { user } = useAuth();
     const userId = user?.id;
     const roleName = user?.role?.name;
+    const accessToken = user?.accessToken
 
     useEffect(() => {
         if (!userId) {
@@ -16,17 +17,19 @@ export function SocketProvider({ children }) {
         }
 
         const onConnect = () => {
-            socket.emit("join-user", userId);
-            if (roleName) socket.emit("join-role", roleName);
+            console.log("Socket connected:", socket.id);
         };
 
         socket.on("connect", onConnect);
+         connectSocket(accessToken);
+
+
         if (socket.connected) onConnect();
-        else socket.connect();
 
         return () => {
             socket.off("connect", onConnect);
-            socket.disconnect();
+            
+            // socket.disconnect();
         };
     }, [userId, roleName]);
 

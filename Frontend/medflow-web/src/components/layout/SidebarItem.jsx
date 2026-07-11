@@ -1,18 +1,34 @@
-import React from 'react';
 
-const SidebarItem = ({ label, icon: Icon, isActive, onClick, theme }) => {
+const SidebarItem = ({ label, icon: Icon, isActive, onClick, accent, danger = false }) => {
+  if (danger) {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group text-rose-500 hover:bg-rose-50"
+      >
+        <Icon className="w-4 h-4 shrink-0 text-rose-400 group-hover:text-rose-600" />
+        <span className="text-sm font-medium">{label}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
-      title={label} 
-      className={`w-full flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-lg transition-all duration-200 text-left font-medium
-        ${isActive 
-          ? `${theme.bg} ${theme.text} shadow-sm` 
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group
+        ${isActive
+          ? `${accent?.bg ?? 'bg-slate-100'} ${accent?.text ?? 'text-slate-900'} font-semibold`
+          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
         }`}
     >
-      <Icon className={`w-5 h-5 ${isActive ? theme.iconColor : 'text-slate-500'}`} />
-      <span className="text-sm hidden lg:block whitespace-nowrap">{label}</span>
+      <Icon
+        className={`w-4 h-4 shrink-0 transition-colors
+          ${isActive
+            ? accent?.icon ?? 'text-slate-700'
+            : 'text-slate-400 group-hover:text-slate-600'
+          }`}
+      />
+      <span className="text-sm">{label}</span>
     </button>
   );
 };

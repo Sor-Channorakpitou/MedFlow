@@ -92,6 +92,7 @@ export const findAppointments = async () => {
       user: { include: { role: true } },
       triage: true,
       invoice: true,
+      queue: true
     },
     orderBy: {
       createdAt: "desc",

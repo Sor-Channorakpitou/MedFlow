@@ -1,5 +1,4 @@
 import { User, Upload } from 'lucide-react';
-import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 
 function ProfileSummary({ profileMetadata }) {
@@ -54,8 +53,21 @@ function ProfileSummary({ profileMetadata }) {
             <span className="text-gray-600 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span> Approvals Pending
             </span>
-            <span className="font-bold text-red-600">{metrics.approvalsPending}</span>
+            <div>
+              { metrics.approvalsPending === 0 ? 
+              <span className="font-bold text-teal-600">{metrics.approvalsPending}</span> 
+              : 
+              <span className="font-bold text-red-600">{metrics.approvalsPending}</span>
+              }
+            </div>
           </div>
+          <div className="flex justify-between items-center py-1">
+            <span className="text-gray-600 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span> Confirmed Pending
+            </span>
+            <span className="font-bold text-teal-600">{metrics.totalConfirmed}</span>
+          </div>
+            
         </div>
       </div>
     </div>

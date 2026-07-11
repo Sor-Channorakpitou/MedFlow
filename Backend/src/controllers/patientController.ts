@@ -3,17 +3,20 @@ import type { Request, Response, NextFunction } from "express";
 
 export const createPatient = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { fullName, gender, phone, address, dateOfBirth } = req.body;
+        const { fullName, gender, phone, address, dateOfBirth, userId } = req.body;
 
         const data = {
             fullName,
             gender,
             phone,
             address,
-            dateOfBirth
+            dateOfBirth,
+            userId
         };
 
-        const patient = await insertPatient(data);
+        const io = req.app.get("io");
+
+        const patient = await insertPatient(data, io);
 
         return res.status(201).json(patient);
     } catch (error) {

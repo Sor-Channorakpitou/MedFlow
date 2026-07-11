@@ -1,24 +1,28 @@
-// components/layout/Header.jsx
-import React, { useEffect, useState } from 'react';
-import { Search, Bell, HelpCircle } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getUserById } from '../services/userAPI';
-import { getCurrentUser } from '../services/authAPI';
+import NotificationBell from './NotificationBell';
 
-export default function Header({ 
-    searchPlaceholder = "Search...",
-    searchValue = "",
-    onSearchChange,
-    showSearch = true,
-    hasNotifications = true
+export default function Header({
+  searchPlaceholder = 'Search...',
+  searchValue = '',
+  onSearchChange,
+  showSearch = true,
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  
+  const initials = user?.name
+    ?.split(' ')
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+
   return (
     <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 w-full shrink-0">
-      
-      {/* Universal Search (Conditional based on role context) */}
+
+      {/* Search */}
       <div className="relative w-full max-w-xl">
         {showSearch && (
           <>
@@ -34,32 +38,37 @@ export default function Header({
         )}
       </div>
 
-      {/* Actions & Profile Dynamic Injection */}
+      {/* Right actions */}
       <div className="flex items-center gap-6">
-        {/* Notifications */}
-        <button className="relative text-slate-600 hover:text-slate-900 transition-colors">
-          <Bell className="w-5 h-5" />
-          {hasNotifications && (
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-          )}
-        </button>
 
-        {/* Global User Session Profile */}
-        <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
-            {user?.profileImage? 
-            ( <img src={user?.profileImage} alt="profile" className='w-10 h-10 rounded-full' /> )
-            : 
-            ( <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center font-bold text-teal-800 text-sm border border-teal-100">
-                {user?.name?.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                {console.log(user?.profileImage)}
-              </div>
-            )}
-            
+        {/* Live notification bell — socket-driven, no DB needed */}
+        <NotificationBell />
+
+        {/* Profile — click routes to /settings */}
+        <button
+          onClick={() => navigate('/settings')}
+          className="flex items-center gap-3 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity"
+          aria-label="Go to profile settings"
+        >
+          {user?.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt="profile"
+              className="w-9 h-9 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center font-bold text-teal-800 text-sm border border-teal-100 shrink-0">
+              {initials}
+            </div>
+          )}
           <div className="text-left hidden sm:block">
             <p className="text-sm font-semibold text-slate-900 leading-none">{user?.name}</p>
-            <span className="text-xs text-slate-500 font-medium mt-0.5 block">{user?.role.name}</span>
+            <span className="text-xs text-slate-500 font-medium mt-0.5 block">
+              {user?.role?.name ?? user?.role}
+            </span>
           </div>
-        </div>
+        </button>
+
       </div>
     </header>
   );

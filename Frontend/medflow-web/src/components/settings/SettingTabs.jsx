@@ -1,4 +1,3 @@
-import React from 'react';
 
 function SettingsTabs({ activeTab, setActiveTab }) {
   const tabs = ['Profile', 'Notifications'];

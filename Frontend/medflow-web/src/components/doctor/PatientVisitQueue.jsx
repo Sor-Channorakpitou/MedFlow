@@ -1,6 +1,5 @@
-import React from 'react';
 
-function PatientVisitQueue({ queue, selectedId, onSelect }) {
+function PatientVisitQueue({ queue, selectedId, onSelect, onClaim  = () => {} }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-full ">
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
@@ -34,6 +33,13 @@ function PatientVisitQueue({ queue, selectedId, onSelect }) {
               
               <h4 className="text-xs font-bold text-gray-900 mt-2">{item.name}</h4>
               <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{item.reason}</p>
+
+              <button
+                  onClick={(e) => { e.stopPropagation(); onClaim(item.id); }}
+                  className="mt-2 text-[10px] font-bold bg-teal-700 hover:bg-teal-800 text-white px-3 py-1 rounded-lg transition w-full"
+                >
+                  Start Consultation
+              </button>
             </div>
           );
         })}

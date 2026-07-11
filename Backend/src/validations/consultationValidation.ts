@@ -3,8 +3,9 @@ import { z } from "zod";
 export const logConsultationSchema = z.object({
   appointmentId: z.number().int().positive(),
   patientId: z.number().int().positive(),
-  diagnosis: z.string().min(1, "Diagnosis text is required"),
+  diagnosis: z.string(),
   notes: z.string().optional().nullable(),
+  needsFollowUp: z.boolean().optional(),
   medications: z.array(
     z.object({
       medicationId: z.number().int().positive(),
