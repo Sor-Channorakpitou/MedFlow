@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Specialty {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  queues  Queue[]
+  doctors User[]
+}
+
 model Role {
   id    Int    @id @default(autoincrement())
   name  String
@@ -14,43 +21,44 @@ model Role {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
   name            String
   phone           String?
-  dateOfBirth     DateTime @db.Date
+  dateOfBirth     DateTime        @db.Date
   passwordHash    String
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  createdAt       DateTime        @default(now())
   roleId          Int
+  isActive        Boolean         @default(true)
+  isSuperAdmin    Boolean         @default(false)
   profileImage    String?
   profilePublicId String?
-
-  appointments   Appointment[]
-  invoices       Invoice[]
-  medicalRecords MedicalRecord[]
-  prescriptions  Prescription[]
-  refreshTokens  RefreshToken[]
-  triages        Triage[]
-  queues         Queue[]
-
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  specialtyId     Int?
+  appointments    Appointment[]
+  invoices        Invoice[]
+  medicalRecords  MedicalRecord[]
+  prescriptions   Prescription[]
+  queues          Queue[]         @relation("CurrentQueueUser")
+  queueHistories  QueueHistory[]  @relation("QueueHistoryUser")
+  refreshTokens   RefreshToken[]
+  triages         Triage[]
+  role            Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  specialty       Specialty?      @relation(fields: [specialtyId], references: [id])
 }
 
 model Patient {
-  id          Int      @id @default(autoincrement())
-  fullName    String
-  gender      Gender
-  phone       String   @unique
-  address     String?
-  dateOfBirth DateTime
-  createdAt   DateTime @default(now())
-
+  id             Int             @id @default(autoincrement())
+  fullName       String
+  gender         Gender
+  phone          String          @unique
+  address        String?
+  dateOfBirth    DateTime
+  createdAt      DateTime        @default(now())
   appointments   Appointment[]
   invoices       Invoice[]
   medicalRecords MedicalRecord[]
   prescriptions  Prescription[]
-  queues         Queue?
+  queues         Queue[]
 }
 
 model Appointment {
@@ -61,28 +69,26 @@ model Appointment {
   createdAt       DateTime          @default(now())
   userId          Int
   patientId       Int
-
-  queue Queue?
-
-  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  invoice       Invoice?
-  medicalRecord MedicalRecord?
-  triage        Triage?
-
-  prescriptions Prescription[]
+  endTime         DateTime
+  startTime       DateTime
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice         Invoice?
+  medicalRecord   MedicalRecord?
+  prescriptions   Prescription[]
+  queue           Queue?
+  triage          Triage?
 
   @@index([userId])
   @@index([patientId])
 }
 
 model Medication {
-  id            Int     @id @default(autoincrement())
-  name          String  @unique
-  description   String
-  stockQuantity Int
-  unitPrice     Decimal @db.Decimal(10, 2)
-
+  id                      Int                      @id @default(autoincrement())
+  name                    String                   @unique
+  description             String
+  stockQuantity           Int
+  unitPrice               Decimal                  @db.Decimal(10, 2)
   prescriptionMedications PrescriptionMedication[]
 }
 
@@ -94,8 +100,7 @@ model InvoiceItem {
   subTotal    Decimal @db.Decimal(10, 2)
   quantity    Int
   invoiceId   Int
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
 }
@@ -108,66 +113,60 @@ model Invoice {
   totalAmount   Decimal       @db.Decimal(10, 2)
   appointmentId Int           @unique
   patientId     Int
-  invoiceItemId Int
   userId        Int
-
-  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  invoiceItems InvoiceItem[]
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceItems  InvoiceItem[]
 
   @@index([patientId])
 }
 
 model MedicalRecord {
-  id            Int      @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   notes         String?
   diagnosis     String
-  visitDate     DateTime @default(now())
+  visitDate     DateTime      @default(now())
   userId        Int
   patientId     Int
-  appointmentId Int      @unique
-
-  appointment  Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prescription Prescription?
+  appointmentId Int           @unique
+  needsFollowUp Boolean       @default(false)
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patient       Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prescription  Prescription?
 
   @@index([userId])
   @@index([patientId])
 }
 
 model Prescription {
-  id Int @id @default(autoincrement())
-
-  status          PrescriptionStatus @default(PENDING)
-  createdAt       DateTime           @default(now())
-  userId          Int
-  patientId       Int
-  appointmentId   Int
-  medicalRecordId Int                @unique
-
+  id                      Int                      @id @default(autoincrement())
+  status                  PrescriptionStatus       @default(PENDING)
+  createdAt               DateTime                 @default(now())
+  userId                  Int
+  patientId               Int
+  medicalRecordId         Int                      @unique
+  appointmentId           Int
+  appointment             Appointment              @relation(fields: [appointmentId], references: [id])
   medicalRecord           MedicalRecord            @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
   patient                 Patient                  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prescriptionMedications PrescriptionMedication[]
-  appointment             Appointment              @relation(fields: [appointmentId], references: [id])
 
   @@index([userId])
   @@index([patientId])
 }
 
 model PrescriptionMedication {
-  id             Int    @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   medicationId   Int
   prescriptionId Int
   dosage         Int
   frequency      Int
   duration       String
-
-  medication   Medication   @relation(fields: [medicationId], references: [id], onDelete: Cascade)
-  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
 }
 
 model Triage {
@@ -181,9 +180,8 @@ model Triage {
   createdAt     DateTime     @default(now())
   appointmentId Int          @unique
   userId        Int
-
-  appointment Appointment @relation(fields: [appointmentId], references: [id])
-  user        User        @relation(fields: [userId], references: [id])
+  appointment   Appointment  @relation(fields: [appointmentId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
 }
 
 model RefreshToken {
@@ -195,25 +193,34 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id])
 }
 
+model QueueHistory {
+  id        Int         @id @default(autoincrement())
+  queueId   Int
+  userId    Int
+  createdAt DateTime    @default(now())
+  fromStage Stage?
+  toStage   Stage
+  action    QueueAction
+  queue     Queue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  user      User        @relation("QueueHistoryUser", fields: [userId], references: [id])
+}
+
 model Queue {
-  id Int @id @default(autoincrement())
-
-  patientId Int     @unique
-  patient   Patient @relation(fields: [patientId], references: [id])
-
-  stage  Stage
-  status QueueStatus
-
-  appointmentId Int?         @unique
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
-
-  queueNumber Int
-
-  userId Int?
-  user   User? @relation(fields: [userId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  Int            @id @default(autoincrement())
+  patientId           Int
+  stage               Stage
+  status              QueueStatus
+  queueNumber         Int            
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  appointmentId       Int?           @unique
+  currentUserId       Int?
+  requiredSpecialtyId Int?
+  appointment         Appointment?   @relation(fields: [appointmentId], references: [id])
+  currentUser         User?          @relation("CurrentQueueUser", fields: [currentUserId], references: [id])
+  patient             Patient        @relation(fields: [patientId], references: [id])
+  requiredSpecialty   Specialty?     @relation(fields: [requiredSpecialtyId], references: [id])
+  histories           QueueHistory[]
 }
 
 model playing_with_neon {
@@ -268,8 +275,15 @@ enum Stage {
 
 enum QueueStatus {
   WAITING
-  IN_PROGRESS
-  TRANSFERRED
+  PROCESSING
   COMPLETED
   CANCELLED
+}
+
+enum QueueAction {
+  START
+  COMPLETE
+  TRANSFER
+  CANCEL
+  SKIP
 }
