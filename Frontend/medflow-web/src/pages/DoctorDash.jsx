@@ -8,7 +8,7 @@ import SymptomsAndActions from "../components/doctor/SymptomsAndActions";
 import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry";
 import Header from "../components/Header";
 
-import { useWorkflow } from "../hooks/useWorkflow";
+import { useWorkflow } from "../hooks/useWorkFlow";
 import { useToast } from "../hooks/useToast";
 import ToastContainer from "../components/ToastContainer";  
 
