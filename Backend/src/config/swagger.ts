@@ -1,5 +1,8 @@
 import swaggerJsdoc from "swagger-jsdoc";
-import schemas from "./schemas";
+import schemas from "./schemas/index.js";
+import dotenv from "dotenv";
+
+dotenv.configDotenv();
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -12,8 +15,8 @@ const options: swaggerJsdoc.Options = {
 
     servers: [
       {
-        url: "http://localhost:3000/api",
-        description: "Development Server",
+        url: `${process.env.BACKEND_URL}/api`,
+        description: process.env.NODE_ENV === "production" ? "Production Server" : "Development Server",
       },
     ],
 

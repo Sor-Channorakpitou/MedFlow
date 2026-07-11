@@ -1,4 +1,4 @@
-import { insertPatient, findAllPatients, findPatientById, modifyPatient, removePatient } from "../services/patientService";
+import { insertPatient, findAllPatients, findPatientById, modifyPatient, removePatient } from "../services/patientService.js";
 import type { Request, Response, NextFunction } from "express";
 
 export const createPatient = async (req: Request, res: Response, next: NextFunction) => {

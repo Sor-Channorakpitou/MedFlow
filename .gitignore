@@ -6,3 +6,5 @@ Backend/generated
 Backend/Dockerfile
 Backend/docker-compose.yml
 Backend/.dockerignore
+Backend/dist
+

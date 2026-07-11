@@ -10,7 +10,7 @@ export const fetchAvailableMedications = async () => {
       },
     },
     orderBy: {
-      name: 'asc', // Good for your UI dropdown
+      name: 'asc', 
     },
   });
 };

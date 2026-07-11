@@ -1,7 +1,7 @@
 import express from "express";
-import { getAllMedications } from "../controllers/medicationController"
-import { authenticate } from "../middlewares/authMiddleware";
-import { authorize } from "../middlewares/roleMiddleware";
+import { getAllMedications } from "../controllers/medicationController.js"
+import { authenticate } from "../middlewares/authMiddleware.js";
+import { authorize } from "../middlewares/roleMiddleware.js";
     
 const router = express.Router();
 

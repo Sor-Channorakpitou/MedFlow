@@ -2,6 +2,9 @@ import app from "./app.js";
 import { Server } from "socket.io";
 import http from "http";
 import { socketAuth } from "./sockets/auth.js";
+import dotenv from "dotenv";
+
+dotenv.configDotenv();
 
 const PORT = process.env.PORT || 3000;
 

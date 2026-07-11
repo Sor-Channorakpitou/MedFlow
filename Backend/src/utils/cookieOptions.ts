@@ -1,7 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 export const refreshTokenCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "Production",
-    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
 };

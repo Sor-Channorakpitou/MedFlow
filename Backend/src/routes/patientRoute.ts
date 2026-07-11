@@ -1,7 +1,7 @@
 import express from "express";
-import { authenticate } from "../middlewares/authMiddleware";
-import { authorize } from "../middlewares/roleMiddleware";
-import { createPatient, deletePatientById, getAllPatients, getPatientById, updatePatientById } from "../controllers/patientController";
+import { authenticate } from "../middlewares/authMiddleware.js";
+import { authorize } from "../middlewares/roleMiddleware.js";
+import { createPatient, deletePatientById, getAllPatients, getPatientById, updatePatientById } from "../controllers/patientController.js";
 
 const router = express.Router();
 

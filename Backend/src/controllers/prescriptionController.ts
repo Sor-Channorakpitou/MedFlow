@@ -1,8 +1,4 @@
-import type {
-  Request,
-  Response,
-  NextFunction
-} from "express";
+import type { Request, Response, NextFunction } from "express";
 
 import * as prescriptionService from "../services/prescriptionService.js";
 import { SOCKET_EVENTS } from "../sockets/socketEvents.js";

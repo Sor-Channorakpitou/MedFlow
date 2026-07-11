@@ -13,15 +13,15 @@ import billingRoute from "./routes/billingRoute.js";
 import queueRoute from "./routes/queueRoute.js";
 import { notFoundHandler } from "./middlewares/notFoundMiddleware.js";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
-
-// Danica 
-
+import dotenv from "dotenv";
 import triageRouter from "./routes/triageRoute.js";
 import consultationRouter from "./routes/consultationRoutes.js"
 import prescriptionRouter from "./routes/prescriptionRoutes.js"
 import medicationRouter from "./routes/medicationRoutes.js"
 
 const app = express();
+dotenv.configDotenv();
+
 
 app.use(cors({
     origin: process.env.FRONTEND_URL,

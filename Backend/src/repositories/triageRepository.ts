@@ -1,8 +1,5 @@
 import { PrismaClient, TriageStatus } from "@prisma/client";
-import type {
-  CreateTriageInput,
-  UpdateTriageInput,
-} from "../validations/triageValidation";
+import type { CreateTriageInput, UpdateTriageInput } from "../validations/triageValidation.js";
 
 const prisma = new PrismaClient();
 

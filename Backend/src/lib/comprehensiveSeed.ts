@@ -538,7 +538,7 @@ async function main() {
   console.log("\n  Login credentials (same as seed.ts):");
   console.log("  admin@medflow.com           Admin@123 (ADMIN)");
   console.log("  receptionist@medflow.com    Recep@123 (RECEPTIONIST)");
-  console.log("  nurse@medflow.com           Nurse@123 (NURSE)");
+  console.log("  nurse@medflow.com           MedFlow2026! (NURSE)");
   console.log("  doctor@medflow.com          Doctor@123 (DOCTOR)");
   console.log("  e.vance@medflow.com         Doctor@123 (DOCTOR)");
   console.log("  j.nurse@medflow.com         Nurse@123 (NURSE)");
