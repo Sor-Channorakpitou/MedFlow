@@ -1,10 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import ToastContainer from "../ToastContainer";
 
 function PrescriptionOrderEntry({ onAdd, allMedications = [] }) {
-  const [selectedMed, setSelectedMed] = useState("");
   const [dose, setDose] = useState("10mg");
   const [freq, setFreq] = useState("1");
   const [duration, setDuration] = useState("7");

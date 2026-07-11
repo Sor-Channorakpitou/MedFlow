@@ -1,5 +1,3 @@
-// components/nurse/MetricCard.jsx
-import React from 'react';
 
 export default function MetricCard({ label, value, icon: Icon, iconBgColor, iconColor }) {
   return (

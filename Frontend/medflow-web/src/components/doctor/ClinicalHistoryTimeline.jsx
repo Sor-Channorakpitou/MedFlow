@@ -22,19 +22,11 @@ function ClinicalHistoryTimeline({ history = [], activeMeds = [] }) {
               return (
                 <div key={uniqueEventKey} className="relative space-y-1 text-left">
                   <div className="absolute -left-[18.5px] top-1 w-2 h-2 rounded-full bg-gray-400 border border-white" />
-                  <span className="text-[10px] text-gray-400 font-bold block">{ev.date}</span>
-                  <h4 className="text-xs font-bold text-gray-900 block">{ev.title || ev.diagnosis}</h4>
-                  <p className="text-[11px] text-gray-500 leading-relaxed block">{ev.desc || ev.clinicalNotes}</p>
-                  
-                  {ev.tags && (
-                    <div className="flex gap-1 pt-1">
-                      {ev.tags.map((t, idx) => (
-                        <span key={`tag-${idx}`} className={`text-[8px] font-black px-1 py-0.5 rounded tracking-wide ${
-                          t === 'CHRONIC' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'
-                        }`}>{t}</span>
-                      ))}
-                    </div>
-                  )}
+                  <span className="text-[10px] text-gray-400 font-bold block">
+                    {ev.visitDate ? new Date(ev.visitDate).toLocaleDateString() : ''}
+                  </span>
+                  <h4 className="text-xs font-bold text-gray-900 block">{ev.diagnosis}</h4>
+                  <p className="text-[11px] text-gray-500 leading-relaxed block">{ev.notes || ev.clinicalNotes}</p>
                 </div>
               );
             })}
@@ -60,11 +52,11 @@ function ClinicalHistoryTimeline({ history = [], activeMeds = [] }) {
                 <div key={medicationKey} className="border border-gray-150 rounded-lg p-2.5 flex justify-between items-center bg-white hover:border-gray-300 transition-colors">
                   <div className="text-left">
                     <h4 className="text-xs font-bold text-gray-800">{m.name}</h4>
-                    {/* FIX: Read instruction, quantity, and refills instead of unpopulated properties */}
+
                     <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
-                      {m.instruction || 'As directed'} 
-                      {m.quantity ? ` • Qty: ${m.quantity}` : ''}
-                      {m.refills ? ` • Refills: ${m.refills}` : ''}
+                      {m.dosage ? `${m.dosage}mg` : ''}
+                      {m.frequency ? ` x${m.frequency}/day` : ''}
+                      {m.duration ? ` for ${m.duration}` : ''}
                     </p>
                   </div>
                   <CheckCircle className="w-3.5 h-3.5 text-teal-600 shrink-0" />

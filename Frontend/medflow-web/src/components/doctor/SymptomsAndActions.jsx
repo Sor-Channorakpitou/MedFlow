@@ -1,7 +1,6 @@
-import React from 'react';
 import { ClipboardList, Activity } from 'lucide-react';
 
-function SymptomsAndActions({ symptoms, onToggle }) {
+function SymptomsAndActions({ symptoms, onToggle, onAddTreatment }) {
   const diagnosticActions = [
     { id: 'a1', text: 'Order EKG/ECG' },
     { id: 'a2', text: 'Comprehensive Metabolic Panel' }
@@ -16,7 +15,7 @@ function SymptomsAndActions({ symptoms, onToggle }) {
           <ClipboardList className="w-4 h-4 text-gray-400" />
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Symptoms Checklist</h3>
         </div>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5">
           {symptoms.map((s) => (
             <div 
               key={s.id} 
@@ -45,7 +44,10 @@ function SymptomsAndActions({ symptoms, onToggle }) {
           {diagnosticActions.map((act) => (
             <div key={act.id} className="border border-gray-200 rounded-lg p-2.5 flex justify-between items-center bg-white shadow-[0_1px_2px_rgba(0,0,0,0.01)] hover:border-gray-300 transition-all">
               <span className="text-xs font-medium text-gray-700"> {act.text}</span>
-              <button className="text-[10px] font-black text-teal-700 tracking-wider hover:text-teal-900 uppercase">
+              <button
+                onClick={() => onAddTreatment?.(act)}
+                className="text-[10px] font-black text-teal-700 tracking-wider hover:text-teal-900 uppercase"
+              >
                 ADD
               </button>
             </div>

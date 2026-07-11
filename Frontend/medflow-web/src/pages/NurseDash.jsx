@@ -1,16 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  TimerReset,
-  TriangleAlert,
-  Users,
-  Minus,
-  CircleDot,
-} from "lucide-react";
-
+import { AlertTriangle, CheckCircle2, TimerReset, TriangleAlert, Users, Minus, CircleDot } from "lucide-react";
 import { useWorkflow } from "../hooks/useWorkflow";
-
+import { claimTriagePatient, createTriageRecord, updateTriageRecord } from '../services/triageAPI';
+import { SPECIALTIES } from '../constants/specialties';
 import MetricCard from "../components/nurse/MetricCard";
 import LiveQueue from "../components/nurse/LiveQueue";
 import ActiveTriagePanel from "../components/nurse/ActiveTriagePanel";
@@ -74,17 +66,17 @@ function NurseDash() {
   const {
     triageQueue: rawQueue,
     loading: isLoadingQueue,
-    createTriageRecord: globalCreateTriage,
-    updateTriageRecord: globalUpdateTriage,
   } = useWorkflow();
 
   const { toasts, showToast, dismissToast } = useToast();
 
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState(null);
   const [selectedId, setSelectedId] = useState("");
   const [urgencyLevel, setUrgencyLevel] = useState(3);
   const [search, setSearch] = useState("");
   const [notes, setNotes] = useState("");
   const [logs, setLogs] = useState([]);
+  const [claimedId, setClaimedId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [bp, setBp] = useState("120/80");
@@ -227,12 +219,31 @@ function NurseDash() {
     setTemp(patient.vitals.temp);
     setWeight(patient.vitals.weight);
     setSpo2(patient.vitals?.spo2 || "98");
+    setSelectedSpecialtyId(null);
 
     console.log("Selected patient:", patient);
   };
 
+  const handleClaimPatient = async (patient) => {
+    try {
+      await claimTriagePatient(patient.queueId || patient.id);
+      setClaimedId(patient.id);
+      showToast("Patient claimed successfully. Proceed with triage.", "success");
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Error claiming patient.",
+        "error"
+      );
+    }
+  };
+
   const handleMoveToDoctor = async () => {
     if (!selectedPatient) return;
+
+    if (!selectedSpecialtyId) {
+      showToast("Please select a target specialty before handing over.", "error");
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -250,17 +261,25 @@ function NurseDash() {
         spo2: parsedSpo2,
         urgencyLevel: URGENCY_MAP[urgencyLevel] || "MEDIUM",
         note: notes || null,
+        requiredSpecialtyId: selectedSpecialtyId || null
       };
 
       const matchedRawItem = rawQueue.find(
         (q) => q.id === selectedPatient.queueId,
       );
-      const isAlreadyTriaged = !!matchedRawItem?.urgencyLevel;
+      const isAlreadyTriaged = !!matchedRawItem?.appointment?.triage?.urgencyLevel;
 
       if (isAlreadyTriaged) {
-        await globalUpdateTriage(selectedPatient.appointmentId, flatPayload);
+        await updateTriageRecord(selectedPatient.appointmentId, flatPayload);
       } else {
-        await globalCreateTriage(flatPayload);
+        try {
+          await claimTriagePatient(selectedPatient.queueId);
+        } catch (claimErr) {
+          if (claimErr.response?.data?.message !== "This patient has already been claimed") {
+            throw claimErr;
+          }
+        }
+        await createTriageRecord(flatPayload);
       }
 
       setLogs((prev) => [
@@ -276,7 +295,7 @@ function NurseDash() {
         ...prev,
       ]);
 
-      // setSelectedId("");
+      setSelectedId("");
       setNotes("");
       showToast("Case successfully triaged and handed over!", "success");
     } catch (err) {
@@ -348,6 +367,8 @@ function NurseDash() {
                 selectedId={selectedId}
                 onSelectPatient={handleSelectPatient}
                 urgencyMeta={URGENCY_META}
+                claimedId={claimedId}
+                onClaim={handleClaimPatient}
               />
             </div>
           )}
@@ -371,9 +392,12 @@ function NurseDash() {
                 onMoveToDoctor={handleMoveToDoctor}
                 isSubmitting={isSubmitting}
                 urgencyMeta={URGENCY_META}
+                specialties={SPECIALTIES}     
+                selectedSpecialtyId={selectedSpecialtyId}
+                onSpecialtyChange={setSelectedSpecialtyId}
               />
             </div>
-            <StationLogs logs={logs} />
+            {/* <StationLogs logs={logs} /> */}
           </div>
         </section>
       </main>

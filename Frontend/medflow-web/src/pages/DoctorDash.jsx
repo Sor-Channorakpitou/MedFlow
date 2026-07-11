@@ -9,19 +9,19 @@ import PrescriptionOrderEntry from "../components/doctor/PrescriptionOrderEntry"
 import Header from "../components/Header";
 
 import { useWorkflow } from "../hooks/useWorkflow";
-
 import { useToast } from "../hooks/useToast";
 import ToastContainer from "../components/ToastContainer";  
 
 // Retained purely for history line queries matching user selections
-import { getPatientHistory } from "../services/consultationAPI";
+import { getPatientHistory, submitConsultation, claimConsultationPatient } from "../services/consultationAPI";
 import { getAllMedications } from "../services/medicationAPI";
+import { useAuth } from "../hooks/useAuth";
 
 function DoctorDash() {
   const {
     consultationQueue: rawQueue,
     loading: isLoading,
-    submitDoctorConsultation,
+    refreshConsultationQueue
   } = useWorkflow();
 
   const { toasts, showToast, dismissToast } = useToast();
@@ -30,6 +30,7 @@ function DoctorDash() {
   const [searchQuery, setSearchQuery] = useState("");
   const [patientHistory, setPatientHistory] = useState([]);
 
+  const [needsFollowUp, setNeedsFollowUp] = useState(false);
   const [prescribedMeds, setPrescribedMeds] = useState([]);
   const [allMedications, setAllMedications] = useState([]);
 
@@ -47,11 +48,8 @@ function DoctorDash() {
     { id: "s4", label: "Nausea", checked: false },
   ]);
 
-  const currentUser = {
-    name: "Dr. Aris Thorne",
-    role: "Attending Cardiologist",
-    initials: "AT",
-  };
+  const { user } = useAuth();
+  const currentUser = user;
 
   const reactiveQueue = useMemo(() => {
     const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
@@ -60,7 +58,7 @@ function DoctorDash() {
       .map((item) => {
         if (!item) return null;
 
-        const appointment = item.appointment || item;
+        const appointment = item.appointment;
         const patient = item.patient || appointment?.patient;
         const triage = item.triage || appointment?.triage;
 
@@ -74,10 +72,10 @@ function DoctorDash() {
 
         return {
           id: item.id,
-          appointmentId: item.appointmentId || appointment?.id,
+          appointmentId: item.appointmentId,
           patientId: patient.id || item.patientId,
           name: (patient.fullName || "Unknown Patient").toUpperCase(),
-          type: "WAITING",
+          type: item.status === "PROCESSING" ? "IN PROGRESS" : "WAITING",
           time: item.createdAt
             ? new Date(item.createdAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -137,7 +135,6 @@ function DoctorDash() {
     loadMedications();
   }, []);
 
-  // 2. Fixed cross-contamination workspace flush
   useEffect(() => {
     if (!activeCase) {
       // Clear data immediately if there is no active patient context
@@ -158,8 +155,8 @@ function DoctorDash() {
     }
 
     setSoapNotes({
-      subjective: `Patient transfers into clinical view for evaluation of: ${activeCase.reason}.`,
-      objective: parsedVitalsString,
+      subjective: "",
+      objective: "",
       assessment: "",
       plan: "",
     });
@@ -167,7 +164,7 @@ function DoctorDash() {
     getPatientHistory(activeCase.patientId)
       .then((res) => setPatientHistory(res?.history || res || []))
       .catch(() => setPatientHistory([]));
-  }, [activeQueueId, activeCase?.id]); // Track activeCase change cleanly
+  }, [activeQueueId, activeCase]); 
 
   const handleSoapChange = (field, value) => {
     setSoapNotes((prev) => ({ ...prev, [field]: value }));
@@ -191,7 +188,6 @@ function DoctorDash() {
       ...prev,
       {
         medicationId: incomingMedId,
-        // We keep the name in React just to display it on the doctor's screen
         name: newMed.name || newMed.medication_name,
         dosage: Number(newMed.dosage || 1),
         frequency: Number(newMed.frequency || 1),
@@ -203,32 +199,43 @@ function DoctorDash() {
     if (!activeCase) return;
 
     try {
-      const activeCheckedSymptoms = symptoms
-        .filter((s) => s.checked)
-        .map((s) => s.label);
 
       // Format strictly for the backend schema
       const targetMedications = prescribedMeds.map((m) => ({
         medicationId: Number(m.medicationId),
-        dosage: Number(m.dosage), // Force Number
-        frequency: Number(m.frequency), // Force Number
+        dosage: Number(m.dosage),
+        frequency: Number(m.frequency), 
         duration: String(m.duration),
       }));
+
       const consultationPayload = {
         appointmentId: Number(activeCase.appointmentId),
         patientId: Number(activeCase.patientId),
         diagnosis: soapNotes.assessment,
         notes: `SUBJECTIVE:\n${soapNotes.subjective}\n\nOBJECTIVE:\n${soapNotes.objective}\n\nPLAN:\n${soapNotes.plan}`.trim(),
         medications: targetMedications,
+        needsFollowUp,
       };
 
-      await submitDoctorConsultation(consultationPayload);
+      await submitConsultation(consultationPayload);
+      await refreshConsultationQueue();
 
       setActiveQueueId("");
       showToast("Consultation finalized successfully. Case dispatched to pharmacy.", "success");
     } catch (err) {
       console.error("Consultation submission crash:", err);
-      showToast("Please fill in all required fields.", "error");
+      showToast(err.response?.data?.message || "Failed to submit consultation.", "error");
+    }
+  };
+
+  const handleClaimPatient = async (queueId) => {
+    try {
+      await claimConsultationPatient(queueId);
+      await refreshConsultationQueue();
+      showToast("Patient claimed successfully.", "success");
+    } catch (err) {
+      console.error("Claim failed:", err);
+      showToast("Failed to claim patient.", "error");
     }
   };
 
@@ -256,12 +263,14 @@ function DoctorDash() {
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch flex-1 min-h-0 overflow-hidden">
-            <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch h-full overflow-hidden">
+            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch h-full overflow-hidden">
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
                 <PatientVisitQueue
                   queue={reactiveQueue}
                   selectedId={activeQueueId}
                   onSelect={setActiveQueueId}
+                  onClaim={handleClaimPatient}
+
                 />
               </div>
 
@@ -273,12 +282,14 @@ function DoctorDash() {
               </div>
             </div>
 
-            <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-1">
+            <div className="lg:col-span-5 flex flex-col gap-4 h-full overflow-y-auto pr-1">
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm shrink-0">
                 <SoapNotesForm
                   className="h-full"
                   data={soapNotes}
                   onChange={handleSoapChange}
+                  needsFollowUp={needsFollowUp}
+                  onFollowUpChange={setNeedsFollowUp}
                 />
               </div>
 
@@ -288,6 +299,7 @@ function DoctorDash() {
                     className="h-full"
                     symptoms={symptoms}
                     onToggle={handleToggleSymptom}
+                    onAddTreatment={(act) => showToast(`Action queued: ${act.text}`, "info")}
                   />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full">

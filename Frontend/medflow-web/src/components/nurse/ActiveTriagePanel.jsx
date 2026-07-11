@@ -1,11 +1,4 @@
-import {
-  Send,
-  ArrowUp,
-  Zap,
-  Thermometer,
-  CheckCircle2,
-  ShieldAlert,
-} from "lucide-react";
+import { Send, ArrowUp, Zap, Thermometer, CheckCircle2, ShieldAlert } from "lucide-react";
 
 function VitalInputCard({
   label,
@@ -87,6 +80,9 @@ export default function ActiveTriagePanel({
   onMoveToDoctor,
   isSubmitting,
   urgencyMeta,
+  specialties,           
+  selectedSpecialtyId,  
+  onSpecialtyChange,
 }) {
   console.log("Panel rendered with:", { selectedPatient, vitals });
   return (
@@ -211,6 +207,22 @@ export default function ActiveTriagePanel({
           </div>
         </div>
 
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block ml-0.5">
+            Route To Specialty
+          </label>
+          <select
+            value={selectedSpecialtyId || ''}
+            onChange={(e) => onSpecialtyChange(e.target.value ? Number(e.target.value) : null)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:border-teal-600"
+          >
+            <option value="">— Any available doctor —</option>
+            {specialties.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Observation Field */}
         <div className="flex flex-col space-y-1.5 min-h-[120px]">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-0.5">
@@ -230,7 +242,8 @@ export default function ActiveTriagePanel({
         <button
           type="button"
           onClick={onMoveToDoctor}
-          disabled={!selectedPatient || isSubmitting}
+          disabled={!selectedPatient || isSubmitting || !selectedSpecialtyId}
+          title={!selectedSpecialtyId ? "Select a target specialty first" : ""}
           className="w-full flex items-center justify-center gap-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold py-3 text-xs uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
