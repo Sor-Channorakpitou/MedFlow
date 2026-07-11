@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "npm run generate && tsc",
     "predev": "kill-port 3000",
     "dev": "nodemon",
     "start": "node dist/server.js",
     "seed": "tsx src/lib/comprehensiveSeed.ts",
-    "seed:build": "node dist/lib/comprehensiveSeed.js"
+    "seed:build": "node dist/lib/comprehensiveSeed.js",
+    "generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
