@@ -1,5 +1,4 @@
 import { User, Upload } from 'lucide-react';
-import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 
 function ProfileSummary({ profileMetadata }) {

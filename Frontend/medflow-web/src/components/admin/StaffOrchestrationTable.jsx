@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { Filter, MoreVertical, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Filter, X } from 'lucide-react';
 import * as userAPI from '../../services/userAPI';
+import AddStaffModal from '../AddtStaffModel';
 
 const ROLE_OPTIONS = ['All Roles', 'DOCTOR', 'NURSE', 'PHARMACIST', 'RECEPTIONIST'];
 
@@ -47,6 +48,7 @@ function ManageStaffModal({ staff, onClose, onSaved }) {
                         <label className="block font-semibold text-gray-600 mb-1">Name</label>
                         <input
                             value={name}
+                            placeholder='Full name'
                             onChange={(e) => setName(e.target.value)}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-200"
                         />
@@ -55,6 +57,7 @@ function ManageStaffModal({ staff, onClose, onSaved }) {
                         <label className="block font-semibold text-gray-600 mb-1">Email</label>
                         <input
                             value={email}
+                            placeholder='Email address'
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-200"
                         />
@@ -63,6 +66,7 @@ function ManageStaffModal({ staff, onClose, onSaved }) {
                         <label className="block font-semibold text-gray-600 mb-1">Phone</label>
                         <input
                             value={phone}
+                            placeholder='Phone number'
                             onChange={(e) => setPhone(e.target.value)}
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-200"
                         />
@@ -102,11 +106,12 @@ function ManageStaffModal({ staff, onClose, onSaved }) {
 
 function StaffOrchestrationTable({ 
     selectedDept, onDeptChange, appointments = [],
-    staffList =[], loading = false, fetchStaff, setStaffList, error = false 
+    staffList =[], loading = false, fetchStaff, setStaffList, error = false, isSuperAdmin = false
 }) {
 
     const [managingStaff, setManagingStaff] = useState(null);
     const [togglingId, setTogglingId] = useState(null);
+    const [showAddModal, setShowAddModal] = useState(false);
 
     const handleToggleStatus = async (staff) => {
         setTogglingId(staff.id);
@@ -148,9 +153,13 @@ function StaffOrchestrationTable({
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-gray-50">
-                <h3 className="text-sm font-bold text-gray-900">Staff Orchestration</h3>
+                <h3 className="text-sm font-bold text-gray-900">Staff Mangement</h3>
 
                 <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <button onClick={() => setShowAddModal(true)}
+                        className="bg-black text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-gray-800 transition">
+                        + Add Staff
+                    </button>
                     <div className="relative flex items-center border border-gray-200 rounded-lg bg-white px-2.5 py-1.5 shadow-sm">
     <Filter className="w-4 h-4 text-gray-500 mr-2" />
 
@@ -286,6 +295,14 @@ function StaffOrchestrationTable({
                 <ManageStaffModal
                     staff={managingStaff}
                     onClose={() => setManagingStaff(null)}
+                    onSaved={fetchStaff}
+                />
+            )}
+
+            {showAddModal && (
+                <AddStaffModal
+                    isSuperAdmin={isSuperAdmin}
+                    onClose={() => setShowAddModal(false)}
                     onSaved={fetchStaff}
                 />
             )}

@@ -1,11 +1,9 @@
-// src/pages/Setting.jsx
 import { useState, useEffect } from "react";
 import SettingTabs from "../components/settings/SettingTabs";
 import ProfileForm from "../components/settings/ProfileForm";
 import ProfileSummary from "../components/settings/ProfileSummary";
 import NotificationSettings from "../components/settings/NotificationSettings";
 import { uploadProfileImage } from "../services/userAPI"
-import { Save } from "lucide-react";
 
 import { useAuth } from "../hooks/useAuth";
 import { getAllPatients } from "../services/patientAPI";
