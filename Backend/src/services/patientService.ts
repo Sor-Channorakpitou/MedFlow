@@ -1,6 +1,9 @@
 import type { Gender } from "@prisma/client"
 import { toPatientDTO } from "../utils/dataFormat.js";
 import prisma from "../lib/prisma.js";
+import { generateQueueNumber } from "./queueService.js";
+import { SOCKET_EVENTS } from "../sockets/socketEvents.js";
+import type { Server } from "socket.io";
 
 type PatientInfo = {
     fullName: string,
@@ -8,9 +11,11 @@ type PatientInfo = {
     phone: string,
     address: string,
     dateOfBirth: Date,
+    userId: number
 }
 
-export const insertPatient = async (data: PatientInfo) => {
+
+export const insertPatient = async (data: PatientInfo, io: Server) => {
     if (
         !data.fullName ||
         !data.gender ||
@@ -25,12 +30,11 @@ export const insertPatient = async (data: PatientInfo) => {
         throw new Error("INVALID_GENDER");
     }
 
+    const normalizedPhone = data.phone.replace(/\s+/g, "");
+
     const existing = await prisma.patient.findFirst({
-        where: { 
-            AND: [
-                { phone: data.phone },
-                { fullName: data.fullName }
-            ]
+        where: {
+            phone: normalizedPhone
         }
     });
 
@@ -38,12 +42,13 @@ export const insertPatient = async (data: PatientInfo) => {
         throw new Error("PATIENT_ALREADY_EXISTS");
     }
 
-    return toPatientDTO(
-        await prisma.patient.create({
-            data: { 
+    const result = await prisma.$transaction(async (tx) => {
+
+        const patient = await tx.patient.create({
+            data: {
                 fullName: data.fullName.trim(),
                 gender: data.gender.toUpperCase() as Gender,
-                phone: data.phone.trim(),
+                phone: data.phone,
                 address: data.address.trim(),
                 dateOfBirth: new Date(data.dateOfBirth),
             },
@@ -55,8 +60,36 @@ export const insertPatient = async (data: PatientInfo) => {
                 address: true,
                 dateOfBirth: true
             }
-        })
+        });
+
+        const queueNumber = await generateQueueNumber(tx);
+
+        const queue = await tx.queue.create({
+            data: {
+                patientId: patient.id,
+                currentUserId: null,
+                stage: "TRIAGE",
+                status: "WAITING",
+                queueNumber
+            }
+        });
+
+        return {
+            patient: toPatientDTO(patient),
+            queue
+        };
+    });
+
+    io.to("NURSE").emit(
+        SOCKET_EVENTS.PATIENT_REGISTERED,
+        { patient: result.patient, queue: result.queue }
     );
+
+    io.to("NURSE").emit(
+        SOCKET_EVENTS.NURSE_AVAILABILITY_UPDATED
+    );
+
+    return result;
 };
 
 export const findAllPatients = async () => {
@@ -105,7 +138,7 @@ export const modifyPatient = async (
     
     if (data.phone !== undefined) {
 
-        const existing = await prisma.user.findFirst({
+        const existing = await prisma.patient.findFirst({
             where: { phone: data.phone }
         });
 
@@ -114,11 +147,11 @@ export const modifyPatient = async (
         }
 
         updateData.phone = data.phone.trim();
-    };
+    }
 
-    if (data.fullName !== undefined) updateData.name = data.fullName;
-    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
     if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth;
+    if (data.address !== undefined) updateData.address = data.address;
 
     return toPatientDTO(
         await prisma.patient.update({
@@ -132,7 +165,6 @@ export const modifyPatient = async (
                 address: true,
                 dateOfBirth: true
             }
-
         })
     );
 };
@@ -142,7 +174,7 @@ export const removePatient = async (id: number) => {
         where: { id }
     });
 
-    if(!patient) throw new Error("USER_NOT_FOUND");
+    if(!patient) throw new Error("NOT_FOUND");
 
     return toPatientDTO( await prisma.patient.delete({ where: { id } }) );
 };
