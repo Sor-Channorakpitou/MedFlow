@@ -14,7 +14,6 @@ type InvoiceInfo = {
   appointmentId: number;
   patientId: number;
   userId: number;
-  invoiceItemId: number
 };
 
 export const insertInvoice = async (data: InvoiceInfo) => {
@@ -24,8 +23,7 @@ export const insertInvoice = async (data: InvoiceInfo) => {
       !data.totalAmount ||
       !data.appointmentId ||
       !data.patientId ||
-      !data.userId || 
-      !data.invoiceItemId
+      !data.userId
     ) {
       throw new Error("MISSING_REQUIRED_FIELDS");
     }
@@ -64,7 +62,9 @@ export const insertInvoice = async (data: InvoiceInfo) => {
           appointmentId: data.appointmentId,
           patientId: data.patientId,
           userId: data.userId,
-          invoiceItemId: data.invoiceItemId
+        },
+        include: {
+          invoiceItems: true,
         },
       })
     );

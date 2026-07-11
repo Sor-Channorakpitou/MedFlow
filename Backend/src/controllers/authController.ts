@@ -101,9 +101,9 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
 
 export const me = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.user?.id;
+        const userId = Number(req.user?.id);
 
-        if (!userId) {
+        if (!userId || isNaN(userId)) {
             return res.status(401).json({
                 success: false,
                 message: "Unauthorized"

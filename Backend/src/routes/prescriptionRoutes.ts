@@ -4,11 +4,6 @@ import { authenticate } from "../middlewares/authMiddleware.js";
 import { authorize } from "../middlewares/roleMiddleware.js";
 
 const router = Router();
-
-const emitWorkflowChange = (req: any, res: any, next: any) => {
-  req.app.get("io")?.emit("workflow_changed");
-  next();
-};
 /**
  * @swagger
  * /prescriptions/pending:
@@ -48,7 +43,7 @@ const emitWorkflowChange = (req: any, res: any, next: any) => {
  *       401:
  *         description: Unauthorized
  */
-router.get("/pending", authenticate, authorize(["ADMIN", "PHARMACIST"]),prescriptionController.getPendingPrescriptions);
+router.get("/pending", authenticate, authorize(["PHARMACIST", "DOCTOR", "NURSE", "RECEPTIONIST", "ADMIN"]),prescriptionController.getPendingPrescriptions);
 
 /**
  * @swagger
@@ -160,6 +155,6 @@ router.get("/:id", authenticate, authorize(["ADMIN", "PHARMACIST"]), prescriptio
  *       404:
  *         description: Prescription not found
  */
-router.put("/:id/dispense", authenticate, authorize(["ADMIN", "PHARMACIST"]),  prescriptionController.dispensePrescription,emitWorkflowChange);
+router.put("/:id/dispense", authenticate, authorize(["ADMIN", "PHARMACIST"]), prescriptionController.dispensePrescription);
 
 export default router;

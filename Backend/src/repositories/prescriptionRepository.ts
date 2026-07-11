@@ -125,12 +125,8 @@ export const executeDispenseTransaction = async (id: number) => {
       data: {
         stage: "BILLING",
         status: "WAITING",
+        currentUserId: null,
       },
-    });
-
-    await tx.queue.updateMany({
-      where: { patientId: prescription.patientId },
-      data: { stage: "COMPLETED", status: "COMPLETED", userId: null },
     });
 
     return updatedPrescription;

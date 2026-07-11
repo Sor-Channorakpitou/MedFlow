@@ -1,7 +1,11 @@
 import * as consultRepo from "../repositories/consultationRepository.js";
 
-export const getDoctorQueue = async () => {
-    return consultRepo.findDoctorQueue();
+export const getDoctorQueue = async (specialtyId?: number) => {
+  return consultRepo.findDoctorQueue(specialtyId);
+};
+
+export const claimPatient = async (queueId: number, doctorId: number) => {
+  return consultRepo.claimConsultationPatient(queueId, doctorId);
 };
 
 export const getPatientHistory = async (patientId: number) => {
@@ -17,10 +21,5 @@ export const editConsultation = async (
   diagnosis: string,
   notes: string | null
 ) => {
-  return await consultRepo.updateConsultation(
-    appointmentId,
-    diagnosis,
-    notes
-  );
+  return await consultRepo.updateConsultation(appointmentId, diagnosis, notes);
 };
-

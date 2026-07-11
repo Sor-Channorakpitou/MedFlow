@@ -4,26 +4,23 @@ import type {
   NextFunction
 } from "express";
 
-import * as prescriptionService
-from "../services/prescriptionService.js";
+import * as prescriptionService from "../services/prescriptionService.js";
+import { SOCKET_EVENTS } from "../sockets/socketEvents.js";
 
 // 1. Pending prescriptions
-export const getPendingPrescriptions = async (  
+export const getPendingPrescriptions = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-
-    const prescriptions =
-      await prescriptionService.getPendingPrescriptions();
+    const prescriptions = await prescriptionService.getPendingPrescriptions();
 
     res.status(200).json({
       success: true,
       count: prescriptions.length,
       prescriptions
     });
-
   } catch (error) {
     next(error);
   }
@@ -36,17 +33,13 @@ export const getPrescriptionById = async (
   next: NextFunction
 ) => {
   try {
-
     const id = Number(req.params.id);
-
-    const prescription =
-      await prescriptionService.getPrescriptionById(id);
+    const prescription = await prescriptionService.getPrescriptionById(id);
 
     res.status(200).json({
       success: true,
       prescription
     });
-
   } catch (error) {
     next(error);
   }
@@ -59,21 +52,18 @@ export const dispensePrescription = async (
   next: NextFunction
 ) => {
   try {
-
     const id = Number(req.params.id);
+    const result = await prescriptionService.dispensePrescription(id);
 
-    const result =
-      await prescriptionService.dispensePrescription(id);
+    const io = req.app.get("io");
+    io?.to("PHARMACIST").emit(SOCKET_EVENTS.MEDICATION_DISPENSED, { prescription: result });
+    io?.to("RECEPTIONIST").emit(SOCKET_EVENTS.PATIENT_MOVED_STAGE, { prescription: result });
 
-      req.app.get("io")?.emit("workflow_changed");
     res.status(200).json({
       success: true,
-      message:
-        "Prescription dispensed successfully.",
+      message: "Prescription dispensed successfully.",
       prescription: result
     });
-
-
   } catch (error) {
     next(error);
   }

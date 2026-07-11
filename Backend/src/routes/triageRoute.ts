@@ -1,19 +1,42 @@
 import express from "express";
-import { 
-  addTriage, 
-  getQueue, 
-  getTriageByAppointment, 
-  updateTriage, 
+import {
+  claimPatient,
+  addTriage,
+  getQueue,
+  getTriageByAppointment,
+  updateTriage,
 } from "../controllers/triageController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { authorize } from "../middlewares/roleMiddleware.js";
 
 const router = express.Router();
 
-const emitWorkflowChange = (req: any, res: any, next: any) => {
-  req.app.get("io")?.emit("workflow_changed");
-  next();
-};
+/**
+ * @swagger
+ * /triage/queue/{queueId}/claim:
+ *   patch:
+ *     summary: Nurse claims a waiting triage patient
+ *     tags:
+ *       - Triage
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: queueId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Patient claimed successfully
+ *       400:
+ *         description: Invalid queue ID
+ *       404:
+ *         description: Queue not found
+ *       409:
+ *         description: Patient already claimed
+ */
+router.patch("/queue/:queueId/claim", authenticate, authorize(["ADMIN", "NURSE"]), claimPatient);
 
 /**
  * @swagger
@@ -44,7 +67,7 @@ const emitWorkflowChange = (req: any, res: any, next: any) => {
  *       401:
  *         description: Unauthorized
  */
-router.get("/queue", authenticate, authorize(["ADMIN","DOCTOR", "NURSE"]), getQueue);
+router.get("/queue", authenticate, authorize(["ADMIN","DOCTOR", "NURSE", "RECEPTIONIST"]), getQueue);
 
 /**
  * @swagger
@@ -153,7 +176,7 @@ router.get("/:appointmentId", authenticate, authorize(["ADMIN","DOCTOR", "NURSE"
  *       401:
  *         description: Unauthorized
  */
-router.post("/", authenticate, authorize(["ADMIN","DOCTOR", "NURSE"]), addTriage, emitWorkflowChange);
+router.post("/", authenticate, authorize(["ADMIN","DOCTOR", "NURSE"]), addTriage);
 
 
 /**
@@ -206,6 +229,6 @@ router.post("/", authenticate, authorize(["ADMIN","DOCTOR", "NURSE"]), addTriage
  *       404:
  *         description: Triage record not found
  */
-router.put("/:appointmentId", authenticate, authorize(["ADMIN", "DOCTOR", "NURSE"]), updateTriage, emitWorkflowChange);
+router.put("/:appointmentId", authenticate, authorize(["ADMIN", "DOCTOR", "NURSE"]), updateTriage);
 
 export default router;

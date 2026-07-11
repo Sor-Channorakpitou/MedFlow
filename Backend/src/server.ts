@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
 
 
     // Automatically join personal room
-    socket.join(`user-${user.id}`);
+    socket.join(`user:${user.id}`);
 
 
     // Automatically join role room
@@ -35,7 +35,7 @@ io.on("connection", (socket) => {
 
 
     console.log(
-        `Joined rooms: user-${user.id}, ${user.role}`
+        `Joined rooms: user:${user.id}, ${user.role}`
     );
 
 

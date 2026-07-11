@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { getInvoices, insertInvoice, recordPayment, updateInvoice } from "../services/billingService.js";
+import { SOCKET_EVENTS } from "../sockets/socketEvents.js";
 
 export const createInvoice = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -18,6 +19,14 @@ export const createInvoice = async (req: Request, res: Response, next: NextFunct
         };
 
         const invoice = await insertInvoice(data);
+
+        const io = req.app.get("io");
+
+            
+        if (io) {
+            io.to("RECEPTIONIST").emit(SOCKET_EVENTS.BILL_GENERATED, { invoice });
+            io.to("RECEPTIONIST").emit(SOCKET_EVENTS.QUEUE_UPDATED, { invoice });
+        }
 
         return res.status(201).json(invoice);
     } catch (error) {
@@ -70,7 +79,25 @@ export const recordPaymentById = async (req: Request, res: Response, next: NextF
             return res.status(400).json({ message: "Invalid user ID" });
         }
 
-        const invoice = await recordPayment(id, req.body.PaymentStatus);
+        const paymentStatus = req.body?.PaymentStatus ?? "PAID";
+        const invoice = await recordPayment(id, paymentStatus);
+
+        const prisma = (await import("../lib/prisma.js")).default;
+
+        const queue = await prisma.queue.findUnique({
+            where: { appointmentId: invoice.appointmentId },
+        });
+        
+        if (queue) {
+            await prisma.queue.update({
+                where: { id: queue.id },
+                data: { status: "COMPLETED", stage: "COMPLETED" },
+            });
+            const io = req.app.get("io");
+            if (io) {
+                io.to("RECEPTIONIST").emit(SOCKET_EVENTS.QUEUE_UPDATED, { queue: { ...queue, status: "COMPLETED", stage: "COMPLETED" } });
+            }
+        }
 
         return res.json(invoice);
     } catch (error) {

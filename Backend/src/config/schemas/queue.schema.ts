@@ -10,10 +10,10 @@ const queue = {
       },
       status: {
         type: "string",
-        enum: ["WAITING", "IN_PROGRESS", "TRANSFERRED", "COMPLETED", "CANCELLED"],
+        enum: ["WAITING", "PROCESSING", "COMPLETED", "CANCELLED"],
       },
       queueNumber: { type: "integer" },
-      userId: { type: "integer", nullable: true },
+      currentUserId: { type: "integer", nullable: true },
     },
   },
 };

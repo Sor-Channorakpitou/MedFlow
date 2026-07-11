@@ -29,7 +29,8 @@ export const loginUser = async (email: string, password: string) => {
     const accessToken = generateAccessToken({
         id: user.id,
         role: user.role.name,
-        username: user.name
+        username: user.name,
+        isSuperAdmin: user.isSuperAdmin
     });
 
    const refreshToken = generateRefreshToken({
@@ -88,7 +89,8 @@ export const refreshAccessToken = async (refreshToken: string) => {
     const newAccessToken = generateAccessToken({
         id: user.id,
         role: user.role.name,
-        username: user.name
+        username: user.name,
+        isSuperAdmin: user.isSuperAdmin
     });
 
     return newAccessToken;

@@ -32,7 +32,7 @@ router.get('/:id', authenticate, authorize(["ADMIN", "NURSE", "DOCTOR"]), getApp
  *     tags: [Appointments]
  *     security: [{ bearerAuth: [] }]
  */
-router.post('/', authenticate, authorize(["ADMIN", "NURSE", "DOCTOR"]), createAppointment);
+router.post('/', authenticate, authorize(["RECEPTIONIST"]), createAppointment);
 
 /**
  * @swagger
@@ -42,7 +42,7 @@ router.post('/', authenticate, authorize(["ADMIN", "NURSE", "DOCTOR"]), createAp
  *     tags: [Appointments]
  *     security: [{ bearerAuth: [] }]
  */
-router.patch('/:id', authenticate, authorize(["ADMIN", "NURSE", "DOCTOR"]), updateAppointment);
+router.patch('/:id', authenticate, authorize(["ADMIN", "NURSE", "DOCTOR", "RECEPTIONIST"]), updateAppointment);
 
 /**
  * @swagger

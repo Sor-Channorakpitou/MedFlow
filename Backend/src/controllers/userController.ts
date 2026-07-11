@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
-import { uploadProfileImageService } from "../services/userService.js";
-import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser, activateUser } from "../services/userService.js";
+import prisma from "../lib/prisma.js";
+import { findAllRoles, findAvailableDoctorsName, uploadProfileImageService } from "../services/userService.js";
+import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, insertUser, modifyUser, removeUser, activateUser, findAvailableNursesName } from "../services/userService.js";
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -37,6 +38,12 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const adminRole = await prisma.role.findFirst({ where: { name: "ADMIN" } });
+
+        if (Number(req.body.roleId) === adminRole?.id && !(req.user as any)?.isSuperAdmin) {
+            return res.status(403).json({ message: "Only superadmin can create admin accounts" });
+        }
+        
         const { email, name, phone, dateOfBirth, password, roleId } = req.body;
 
         const data = {
@@ -165,6 +172,38 @@ export const uploadProfileImage = async (req: Request, res: Response, next: Next
         next(error);
     }
 };
+
+export const getAllNursesName = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const users = await findAvailableNursesName();
+
+        if(users.length === 0) return res.status(404).json({ message: "No users found" });
+    
+        return res.json(users);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getAllDoctorsName = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await findAvailableDoctorsName();
+    return res.json(users);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const getAllRoles = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const roles = await findAllRoles();
+    return res.json(roles);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 
 

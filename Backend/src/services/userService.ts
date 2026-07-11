@@ -65,7 +65,7 @@ export const insertUser = async ( data: CreateUserInput ) => {
             name: data.name.trim(),
             phone: data.phone?.trim(),
             passwordHash: passwordHash,
-            dateOfBirth: data.dateOfBirth,
+            dateOfBirth: new Date(data.dateOfBirth),
             roleId: data.roleId
         },
         select: {
@@ -233,7 +233,8 @@ export const findUserEmail = async (email: string) => {
                     name: true
                 }
             },
-            passwordHash: true
+            passwordHash: true,
+            isSuperAdmin: true
         }
     });
 
@@ -256,9 +257,7 @@ export const adminResetUserPassword = async (userId: number, newPassword: string
 
     await prisma.user.update({
         where: { id: userId },
-        data: { passwordHash,
-            mustChangePassword: true
-        }
+        data: { passwordHash }
     });
 
     return {
@@ -296,4 +295,36 @@ export const uploadProfileImageService = async (userId: number, file: Express.Mu
     });
 
     return updatedUser;
+};
+
+export const findAvailableNursesName = async () => {
+    const users = await prisma.user.findMany({
+        where: {
+            role: {
+                name: "NURSE"
+            }
+        },
+        select: {
+            id: true,
+            name: true
+        },
+        orderBy: {
+            name: "asc"
+        }
+    });
+
+    if(users.length === 0) throw new Error("NO_RESOURCES"); 
+
+    return users.map(toUserDTO);
+}
+
+export const findAvailableDoctorsName = async () => {
+  return prisma.user.findMany({
+    where: { role: { name: "DOCTOR" }, isActive: true },
+    select: { id: true, name: true, specialtyId: true, specialty: { select: { name: true } } },
+  });
+};
+
+export const findAllRoles = async () => {
+  return prisma.role.findMany({ select: { id: true, name: true } });
 };

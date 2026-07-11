@@ -22,6 +22,7 @@ export const toUserDTO = (user: any) => ({
     name: user.name,
     phone: user.phone,
     roleId: user.roleId,
+    specialtyId: user.specialtyId ?? null,
     appointments: user.appointments,
     patients: user.appointments?.map((a: any) => a.patient),
     role: user.role
@@ -33,6 +34,7 @@ export const toUserDTO = (user: any) => ({
     dateOfBirth: formatDateOnly(user.dateOfBirth),
     profileImage: user.profileImage,
     isActive: user.isActive,
+    isSuperAdmin: user.isSuperAdmin
 });
 
 export const toPatientDTO = (patient: any) => ({
@@ -72,6 +74,7 @@ export const toAppointmentDTO = (appointment: any) => ({
           id: appointment.user.id,
           name: appointment.user.name,
           role: appointment.user.role?.name ?? null,
+          specialtyId: appointment.user.specialtyId ?? null,
         }
       : null,
 

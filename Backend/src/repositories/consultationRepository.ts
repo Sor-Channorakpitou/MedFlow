@@ -1,27 +1,57 @@
 import prisma from "../lib/prisma.js";
 
-export const findDoctorQueue = async () => {
+// Doctor queue filtered by specialty, shows WAITING + PROCESSING
+export const findDoctorQueue = async (specialtyId?: number) => {
   return prisma.queue.findMany({
     where: {
       stage: "DOCTOR",
-      status: "WAITING",
+      status: { in: ["WAITING", "PROCESSING"] },
+      ...(specialtyId !== undefined && { requiredSpecialtyId: specialtyId }),
     },
     include: {
       patient: true,
-      user: {
-        select: {
-          id: true,
-          name: true,
+      appointment: {
+        include: {
+          triage: { select: { urgencyLevel: true } },
         },
       },
+      currentUser: {
+        select: { id: true, name: true },
+      },
     },
-    orderBy: {
-      queueNumber: "asc",
+    orderBy: { queueNumber: "asc" },
+  });
+};
+
+// Doctor claims a WAITING patient → PROCESSING
+export const claimConsultationPatient = async (
+  queueId: number,
+  doctorId: number
+) => {
+  const queue = await prisma.queue.findUnique({
+    where: { id: queueId },
+  });
+
+  if (!queue) throw new Error("QUEUE_NOT_FOUND");
+  if (queue.stage !== "DOCTOR") throw new Error("QUEUE_NOT_IN_DOCTOR_STAGE");
+  if (queue.status !== "WAITING") throw new Error("QUEUE_ALREADY_CLAIMED");
+
+  return prisma.queue.update({
+    where: { id: queueId },
+    data: {
+      status: "PROCESSING",
+      currentUserId: doctorId,
+    },
+    include: {
+      patient: true,
+      currentUser: {
+        select: { id: true, name: true },
+      },
     },
   });
 };
 
-// 2. View a patient's historical medical records
+// Patient's full medical record history
 export const findHistoryByPatientId = async (patientId: number) => {
   return await prisma.medicalRecord.findMany({
     where: { patientId },
@@ -45,25 +75,21 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
     if (!appointmentExists) {
       throw new Error(
-        `Appointment with ID ${data.appointmentId} does not exist.`,
+        `Appointment with ID ${data.appointmentId} does not exist.`
       );
     }
 
     const verifiedPatientId = appointmentExists.patientId;
 
     const queue = await tx.queue.findFirst({
-      where: {
-        appointmentId: data.appointmentId,
-      },
+      where: { appointmentId: data.appointmentId },
     });
 
-    if (!queue) {
-      throw new Error("QUEUE_NOT_FOUND");
-    }
+    if (!queue) throw new Error("QUEUE_NOT_FOUND");
 
     if (data.medications && data.medications.length > 0) {
       const uniqueMedIds = Array.from(
-        new Set(data.medications.map((m: any) => Number(m.medicationId))),
+        new Set(data.medications.map((m: any) => Number(m.medicationId)))
       ) as number[];
 
       const existingMedications = await tx.medication.findMany({
@@ -73,18 +99,19 @@ export const saveConsultation = async (data: any, doctorId: number) => {
 
       if (existingMedications.length !== uniqueMedIds.length) {
         throw new Error(
-          "One or more medication IDs provided do not exist in the stock inventory.",
+          "One or more medication IDs provided do not exist in the stock inventory."
         );
       }
     }
 
-    // A. Use upsert so testing multiple times with the same appointmentId won't crash!
+    // A. Upsert medical record so re-submissions on same appointmentId won't crash
     const record = await tx.medicalRecord.upsert({
       where: { appointmentId: data.appointmentId },
       update: {
         diagnosis: data.diagnosis,
         notes: data.notes || "",
         userId: doctorId,
+        needsFollowUp: data.needsFollowUp ?? false,
       },
       create: {
         appointmentId: data.appointmentId,
@@ -92,11 +119,14 @@ export const saveConsultation = async (data: any, doctorId: number) => {
         userId: doctorId,
         diagnosis: data.diagnosis,
         notes: data.notes || "",
+        needsFollowUp: data.needsFollowUp ?? false,
       },
     });
 
-    // B. Create a single PENDING prescription header to group all medicines together
-    if (data.medications && data.medications.length > 0) {
+    const hasMedications = data.medications && data.medications.length > 0;
+
+    // B. Create prescription + medications when prescribed
+    if (hasMedications) {
       await tx.prescription.deleteMany({
         where: { medicalRecordId: record.id },
       });
@@ -104,18 +134,10 @@ export const saveConsultation = async (data: any, doctorId: number) => {
       const prescription = await tx.prescription.create({
         data: {
           status: "PENDING",
-          medicalRecord: {
-            connect: { id: record.id }
-          },
-          patient: {
-            connect: { id: verifiedPatientId }
-          },
-          user: {
-            connect: { id: doctorId }
-          },
-          appointment: {
-            connect: { id: data.appointmentId }
-          }
+          medicalRecord: { connect: { id: record.id } },
+          patient: { connect: { id: verifiedPatientId } },
+          user: { connect: { id: doctorId } },
+          appointment: { connect: { id: data.appointmentId } },
         },
       });
 
@@ -130,37 +152,31 @@ export const saveConsultation = async (data: any, doctorId: number) => {
       await tx.prescriptionMedication.createMany({
         data: medicationRecords,
       });
-
-      console.log("Medication Records:", medicationRecords);
     }
 
+    // C. Skip PHARMACY and go straight to BILLING when no medications prescribed
+    const nextStage = hasMedications ? "PHARMACY" : "BILLING";
+
     await tx.queue.updateMany({
-      where: {
-        appointmentId: data.appointmentId,
-      },
+      where: { appointmentId: data.appointmentId },
       data: {
-        stage: "PHARMACY",
+        stage: nextStage,
         status: "WAITING",
-        userId: null,
+        currentUserId: null,
       },
     });
 
-    return record;
+    return { record, nextStage };
   });
 };
 
 export const updateConsultation = async (
   appointmentId: number,
   diagnosis: string,
-  notes: string | null,
+  notes: string | null
 ) => {
   return await prisma.medicalRecord.update({
-    where: {
-      appointmentId,
-    },
-    data: {
-      diagnosis,
-      notes,
-    },
+    where: { appointmentId },
+    data: { diagnosis, notes },
   });
 };

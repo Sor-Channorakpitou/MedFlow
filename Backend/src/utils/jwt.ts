@@ -11,6 +11,7 @@ export type AccessPayload = {
     id: number;
     role: string;
     username: string;
+    isSuperAdmin: boolean
 };
 
 export type RefreshPayload = {
