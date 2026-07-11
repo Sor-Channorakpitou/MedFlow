@@ -1,7 +1,6 @@
 import { Mail, Lock, Shield, BriefcaseMedical, Eye, EyeOff, Loader2, AlertCircle, X } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser } from "../../services/authAPI";
 import { useAuth } from "../../hooks/useAuth";
 
 export default function AuthCard() {
@@ -21,18 +20,21 @@ export default function AuthCard() {
     setError("");
 
     try {
-      // 1. Authenticate and set tokens
-      await login({ email, password });
+      // login() authenticates, sets the access token, and sets the user in context
+      const user = await login({ email, password });
 
-      const res = await getCurrentUser();
-      const role = res?.user?.role?.name;
+      // user.role comes from toUserDTO: { id, name }
+      const roleName = user?.role?.name ?? user?.role;
+      if (!roleName) throw new Error("Unknown role");
 
-      navigate(`/${role.toLowerCase()}`);
+      navigate(`/${roleName.toLowerCase()}`);
     } catch (err) {
       console.error(err);
 
       if (err.response?.status === 401) {
         setError("Incorrect email or password.");
+      } else if (err.response?.status === 500) {
+        setError("Server error. Please try again or contact support.");
       } else {
         setError("Unable to sign in. Please try again.");
       }
