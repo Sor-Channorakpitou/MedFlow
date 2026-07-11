@@ -2,10 +2,15 @@ import api from "./api";
 
 const API_BASE_URL = "/queues";
 
-// Get all queues
+// Get all queues — returns [] when no queues exist (404)
 export const getAllQueues = async () => {
-    const res = await api.get(`${API_BASE_URL}`);
-    return res.data;
+    try {
+        const res = await api.get(`${API_BASE_URL}`);
+        return Array.isArray(res.data) ? res.data : [];
+    } catch (err) {
+        if (err?.response?.status === 404) return [];
+        throw err;
+    }
 };
 
 // Get queue by ID
@@ -14,7 +19,7 @@ export const getQueueById = async (id) => {
     return res.data;
 };
 
-// Create a new queue
+// Create a new queue entry
 export const createQueue = async (queueData) => {
     const res = await api.post(`${API_BASE_URL}`, queueData);
     return res.data;
@@ -34,8 +39,6 @@ export const deleteQueue = async (id) => {
 
 // Move queue stage
 export const moveQueueStage = async (id, stage) => {
-    const res = await api.patch(`${API_BASE_URL}/${id}/move-stage`, {
-        stage,
-    });
+    const res = await api.patch(`${API_BASE_URL}/${id}/move-stage`, { stage });
     return res.data;
 };
