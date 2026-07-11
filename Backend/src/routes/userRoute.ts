@@ -1,9 +1,7 @@
 import express from "express";
 import { adminResetPasswordUserById, createUser, deactivateUserById, deleteUserById,
 getAllUsers, getUserById, updateUserById, uploadProfileImage, activateUserById, 
-getAllNursesName, 
-getAllDoctorsName,
-getAllRoles} from "../controllers/userController.js";
+getAllNursesName, getAllDoctorsName, getAllRoles } from "../controllers/userController.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
 import { authorize } from "../middlewares/roleMiddleware.js";
 import upload from "../middlewares/upload.js";
