@@ -240,11 +240,15 @@ async function main() {
         status: QueueStatus.WAITING,
         appointmentId: appointmentByPhone[q.phone],
         queueNumber: q.queueNumber,
-        requiredSpecialtyId: q.specialtyName ? specialties[q.specialtyName] : null,
+        requiredSpecialtyId: q.specialtyName ? specialties[q.specialtyName] ?? null : null,
         currentUserId: users[q.currentUserEmail],
       }))
-      .filter((it): it is NonNullable<typeof it & { patientId: number; appointmentId: number | null; currentUserId: number }>
-        => typeof it.patientId === "number" && typeof it.currentUserId === "number" && (typeof it.appointmentId === "number" || it.appointmentId === null)),
+      .filter((it): it is NonNullable<typeof it & { patientId: number; appointmentId: number | null; currentUserId: number; requiredSpecialtyId: number | null }> =>
+        typeof it.patientId === "number" &&
+        typeof it.currentUserId === "number" &&
+        (typeof it.appointmentId === "number" || it.appointmentId === null) &&
+        typeof it.requiredSpecialtyId !== "undefined",
+      ),
     skipDuplicates: true,
   });
 
@@ -264,15 +268,15 @@ async function main() {
   for (const phone of RECEPTION_PHONES) {
     const qId = queueByPhone[phone];
     if (!qId) continue;
-    historyData.push({ queueId: qId, userId: users["receptionist@medflow.com"], action: QueueAction.START, fromStage: null, toStage: "RECEPTION" });
+    historyData.push({ queueId: qId, userId: users["receptionist@medflow.com"]!, action: QueueAction.START, fromStage: null, toStage: "RECEPTION" });
   }
 
   for (const phone of TRIAGE_PHONES) {
     const qId = queueByPhone[phone];
     if (!qId) continue;
     historyData.push(
-      { queueId: qId, userId: users["receptionist@medflow.com"], action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
+      { queueId: qId, userId: users["receptionist@medflow.com"]!, action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
     );
   }
 
@@ -280,10 +284,10 @@ async function main() {
     const qId = queueByPhone[phone];
     if (!qId) continue;
     historyData.push(
-      { queueId: qId, userId: users["receptionist@medflow.com"], action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.COMPLETE, fromStage: "TRIAGE", toStage: "TRIAGE" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.TRANSFER, fromStage: "TRIAGE", toStage: "DOCTOR" },
+      { queueId: qId, userId: users["receptionist@medflow.com"]!, action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.COMPLETE, fromStage: "TRIAGE", toStage: "TRIAGE" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "TRIAGE", toStage: "DOCTOR" },
     );
   }
 
@@ -291,12 +295,12 @@ async function main() {
     const qId = queueByPhone[phone];
     if (!qId) continue;
     historyData.push(
-      { queueId: qId, userId: users["receptionist@medflow.com"], action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.COMPLETE, fromStage: "TRIAGE", toStage: "TRIAGE" },
-      { queueId: qId, userId: users["nurse@medflow.com"], action: QueueAction.TRANSFER, fromStage: "TRIAGE", toStage: "DOCTOR" },
-      { queueId: qId, userId: users["doctor@medflow.com"], action: QueueAction.COMPLETE, fromStage: "DOCTOR", toStage: "DOCTOR" },
-      { queueId: qId, userId: users["doctor@medflow.com"], action: QueueAction.TRANSFER, fromStage: "DOCTOR", toStage: "PHARMACY" },
+      { queueId: qId, userId: users["receptionist@medflow.com"]!, action: QueueAction.START, fromStage: null, toStage: "RECEPTION" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "RECEPTION", toStage: "TRIAGE" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.COMPLETE, fromStage: "TRIAGE", toStage: "TRIAGE" },
+      { queueId: qId, userId: users["nurse@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "TRIAGE", toStage: "DOCTOR" },
+      { queueId: qId, userId: users["doctor@medflow.com"]!, action: QueueAction.COMPLETE, fromStage: "DOCTOR", toStage: "DOCTOR" },
+      { queueId: qId, userId: users["doctor@medflow.com"]!, action: QueueAction.TRANSFER, fromStage: "DOCTOR", toStage: "PHARMACY" },
     );
   }
 
@@ -332,8 +336,7 @@ async function main() {
         appointmentId: appointmentByPhone[t.phone],
         userId: users["nurse@medflow.com"],
       }))
-      .filter((it): it is NonNullable<typeof it & { appointmentId: number; userId: number }>
-        => typeof it.appointmentId === "number" && typeof it.userId === "number"),
+      .filter((it): it is NonNullable<typeof it & { appointmentId: number; userId: number }> => typeof it.appointmentId === "number" && typeof it.userId === "number"),
     skipDuplicates: true,
   });
   console.log(`  \u2705 ${triageVitals.length} triage records seeded\n`);
@@ -360,8 +363,8 @@ async function main() {
         patientId: patientByPhone[s.phone],
         appointmentId: appointmentByPhone[s.phone],
       }))
-      .filter((it): it is NonNullable<typeof it & { userId: number; patientId: number; appointmentId: number }>
-        => typeof it.userId === "number" && typeof it.patientId === "number" && typeof it.appointmentId === "number"),
+      .filter((it): it is NonNullable<typeof it & { userId: number; patientId: number; appointmentId: number }> =>
+        typeof it.userId === "number" && typeof it.patientId === "number" && typeof it.appointmentId === "number"),
     skipDuplicates: true,
   });
 
@@ -395,8 +398,7 @@ async function main() {
         appointmentId: appointmentByPhone[p.phone],
         medicalRecordId: medRecordByPhone[p.phone],
       }))
-      .filter((it): it is NonNullable<typeof it & { userId: number; patientId: number; appointmentId: number | null; medicalRecordId: number | null }>
-        => typeof it.userId === "number" && typeof it.patientId === "number" && (typeof it.appointmentId === 'number' || it.appointmentId === null) && (typeof it.medicalRecordId === 'number' || it.medicalRecordId === null)),
+      .filter((it): it is NonNullable<typeof it & { userId: number; patientId: number; appointmentId: number | null; medicalRecordId: number | null }> => typeof it.userId === "number" && typeof it.patientId === "number" && (typeof it.appointmentId === 'number' || it.appointmentId === null) && (typeof it.medicalRecordId === 'number' || it.medicalRecordId === null)),
     skipDuplicates: true,
   });
 
@@ -429,8 +431,7 @@ async function main() {
         frequency: p.frequency,
         duration: p.duration,
       }))
-      .filter((it): it is NonNullable<typeof it & { medicationId: number; prescriptionId: number }>
-        => typeof it.medicationId === 'number' && typeof it.prescriptionId === 'number'),
+      .filter((it): it is NonNullable<typeof it & { medicationId: number; prescriptionId: number }> => typeof it.medicationId === 'number' && typeof it.prescriptionId === 'number'),
   });
   console.log(`  \u2705 ${prescriptions.length} prescriptions, ${prescItemData.length} medication items seeded\n`);
 
@@ -453,8 +454,7 @@ async function main() {
         patientId: patientByPhone[inv.phone],
         userId: users["receptionist@medflow.com"],
       }))
-      .filter((it): it is NonNullable<typeof it & { appointmentId: number; patientId: number; userId: number }>
-        => typeof it.appointmentId === 'number' && typeof it.patientId === 'number' && typeof it.userId === 'number'),
+      .filter((it): it is NonNullable<typeof it & { appointmentId: number; patientId: number; userId: number }> => typeof it.appointmentId === 'number' && typeof it.patientId === 'number' && typeof it.userId === 'number'),
     skipDuplicates: true,
   });
 
@@ -490,8 +490,7 @@ async function main() {
         subTotal: item.subTotal,
         invoiceId: invoiceByPhone[item.invPhone],
       }))
-      .filter((it): it is NonNullable<typeof it & { invoiceId: number }>
-        => typeof it.invoiceId === 'number'),
+      .filter((it): it is NonNullable<typeof it & { invoiceId: number }> => typeof it.invoiceId === 'number'),
   });
 
   // Update totals to match item sums
