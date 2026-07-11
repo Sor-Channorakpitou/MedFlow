@@ -2,7 +2,6 @@
 .env
 .vscode/
 node_modules/
-Backend/dist
 Backend/generated
 Backend/Dockerfile
 Backend/docker-compose.yml
