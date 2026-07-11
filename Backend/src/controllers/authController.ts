@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { loginUser, refreshAccessToken, logoutUser, changePasswordUser, getMe } from "../services/authService.js";
-import { refreshTokenCookieOptions } from "../utils/cookieOptions";
+import { refreshTokenCookieOptions } from "../utils/cookieOptions.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {

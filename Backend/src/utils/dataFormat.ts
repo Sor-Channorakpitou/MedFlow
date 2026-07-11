@@ -1,5 +1,3 @@
-import appointment from "../config/schemas/appointment.schema";
-
 export const formatDateOnly = (date?: Date | string | null | undefined) => {
   if (!date) return null;
 
