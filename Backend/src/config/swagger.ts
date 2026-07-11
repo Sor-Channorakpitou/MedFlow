@@ -15,7 +15,7 @@ const options: swaggerJsdoc.Options = {
 
     servers: [
       {
-        url: process.env.BACKEND_URL,
+        url: `${process.env.BACKEND_URL}/api`,
         description: process.env.NODE_ENV === "production" ? "Production Server" : "Development Server",
       },
     ],
