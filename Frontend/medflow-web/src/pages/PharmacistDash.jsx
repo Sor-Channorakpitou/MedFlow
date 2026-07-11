@@ -6,14 +6,15 @@ import MedicationDispensation from "../components/pharmacist/MedicationDispensat
 import Header from "../components/Header";
 import { useToast } from "../hooks/useToast";
 import ToastContainer from "../components/ToastContainer";
+import { dispensePrescription } from "../services/prescriptionAPI";
 
 import { useWorkflow } from "../hooks/useWorkflow";
+import { updateQueue } from "../services/queueAPI";
 
 function PharmacistDash() {
   const { 
     prescriptions: rawPrescriptions, 
     loading: isLoading, 
-    dispensePrescription 
   } = useWorkflow();
 
   const { toasts, showToast, dismissToast } = useToast();
@@ -51,6 +52,7 @@ function PharmacistDash() {
         return {
           id: prescription.id,
           prescriptionId: prescription.id,
+          queueId: prescription.queueId || null,
           patientId: patient.id || null,
           name: (patient.fullName || "UNKNOWN PATIENT").toUpperCase(),
           dob: patient.dateOfBirth
@@ -117,6 +119,16 @@ function PharmacistDash() {
     }
   };
 
+  const handleSelectPatient = async (id) => {
+    setSelectedPrescriptionId(id);
+    const entry = reactiveQueue.find((p) => p.id === id);
+    if (entry?.queueId) {
+      try {
+        await updateQueue(entry.queueId, { status: 'PROCESSING' });
+      } catch { /* silent */ }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center text-slate-400 font-medium">
@@ -144,7 +156,7 @@ function PharmacistDash() {
             <PendingFulfillmentList
               patients={reactiveQueue}
               selectedId={activePrescription.id}
-              onSelect={setSelectedPrescriptionId}
+              onSelect={handleSelectPatient}
             />
           </div>
 
