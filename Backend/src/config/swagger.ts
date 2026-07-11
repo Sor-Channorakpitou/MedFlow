@@ -1,5 +1,5 @@
 import swaggerJsdoc from "swagger-jsdoc";
-import schemas from "./schemas";
+import schemas from "./schemas/index.js";
 import dotenv from "dotenv";
 
 dotenv.configDotenv();
