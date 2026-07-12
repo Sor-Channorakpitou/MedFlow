@@ -13,6 +13,7 @@ const server = http.createServer(app);
 export const io = new Server(server, {
     cors: {
         origin: process.env.FRONTEND_URL,
+        methods: ['GET', 'POST'],
         credentials: true,
     },
 });
@@ -48,7 +49,7 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server is running`);
 });
 
 function shutdown(callback?: () => void) {
