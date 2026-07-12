@@ -4,8 +4,9 @@ import { useAuth } from '../../hooks/useAuth';
 import SidebarItem from './SidebarItem';
 import { NAV_CONFIG, BOTTOM_NAV, ROLE_ACCENT } from './sidebarConfig';
 import icon from '../../assets/icon.png';
+import { Menu } from 'lucide-react'; // Make sure lucide-react or your specific icon package is installed
 
-const AsideLeft = () => {
+const AsideLeft = ({ isExpanded, setIsExpanded }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -30,7 +31,6 @@ const AsideLeft = () => {
       setConfirmLogout(true);
       return;
     }
-    // Strip query params for path matching — just navigate to the base path
     navigate(item.path.split('?')[0]);
   };
 
@@ -43,29 +43,44 @@ const AsideLeft = () => {
   };
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-slate-100 flex flex-col shrink-0 select-none">
-
+    <aside 
+      className={`h-screen bg-white border-r border-slate-100 flex flex-col shrink-0 select-none transition-all duration-300 ease-in-out
+        ${isExpanded ? 'w-64' : 'w-16'}`}
+    >
       {/* ── Brand ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-100 shrink-0">
-        <img src={icon} alt="MedFlow" className="w-7 h-7 rounded-lg" />
-        <div>
-          <p className="text-sm font-bold text-slate-900 leading-none">MedFlow</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Clinical Operations</p>
+      <div className={`flex items-center h-16 border-b border-slate-100 shrink-0 px-4 ${isExpanded ? 'justify-between' : 'justify-center'}`}>
+        <div className={`flex items-center gap-2.5 min-w-0 ${!isExpanded && 'hidden'}`}>
+          <img src={icon} alt="MedFlow" className="w-7 h-7 rounded-lg shrink-0" />
+          <div className="truncate">
+            <p className="text-sm font-bold text-slate-900 leading-none">MedFlow</p>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">Clinical Operations</p>
+          </div>
         </div>
+        
+        {/* Universal Sidebar Menu Toggle Trigger */}
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)} 
+          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors shrink-0"
+        >
+          <Menu className="w-4 h-4" />
+        </button>
       </div>
 
       {/* ── Navigation ────────────────────────────────────── */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-none">
         {navGroups.map((group) => (
           <div key={group.group}>
-            {/* Group label */}
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 mb-1.5">
-              {group.group}
-            </p>
+            {/* Group label hidden during compact view */}
+            {isExpanded ? (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-3 mb-1.5 truncate">
+                {group.group}
+              </p>
+            ) : (
+              <div className="h-px bg-slate-100 my-4 mx-1" /> // Visual separation line if collapsed
+            )}
 
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                // Active = current path matches the item's base path
                 const isActive = currentPath === item.path.split('?')[0];
                 return (
                   <SidebarItem
@@ -74,6 +89,7 @@ const AsideLeft = () => {
                     icon={item.icon}
                     isActive={isActive}
                     accent={accent}
+                    isExpanded={isExpanded}
                     onClick={() => handleNav(item)}
                   />
                 );
@@ -93,6 +109,7 @@ const AsideLeft = () => {
             isActive={currentPath === item.path}
             accent={accent}
             danger={item.isAction === 'logout'}
+            isExpanded={isExpanded}
             onClick={() => handleNav(item)}
           />
         ))}
@@ -101,9 +118,10 @@ const AsideLeft = () => {
       {/* ── Profile mini-card ─────────────────────────────── */}
       <button
         onClick={() => navigate('/settings')}
-        className="mx-3 mb-4 p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-colors text-left flex items-center gap-3 group"
+        className={`mx-3 mb-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition-all text-left flex items-center group
+          ${isExpanded ? 'p-3 gap-3' : 'p-2 justify-center'}`}
       >
-        {/* Avatar */}
+        {/* Avatar badge remains static */}
         {user?.profileImage ? (
           <img
             src={user.profileImage}
@@ -116,24 +134,27 @@ const AsideLeft = () => {
           </div>
         )}
 
-        {/* Name + role */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 leading-none truncate">
-            {user?.name ?? 'User'}
-          </p>
-          <span className={`inline-flex items-center mt-1 gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${accent.dot}`} />
-            {roleName}
-          </span>
-        </div>
+        {/* Name and role labels vanish cleanly during compact collapse layout */}
+        {isExpanded && (
+          <>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 leading-none truncate">
+                {user?.name ?? 'User'}
+              </p>
+              <span className={`inline-flex items-center mt-1 gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${accent.dot}`} />
+                {roleName}
+              </span>
+            </div>
 
-        {/* Settings hint */}
-        <svg
-          className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors"
-          fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+            <svg
+              className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors"
+              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </>
+        )}
       </button>
 
       {/* ── Logout confirmation modal ──────────────────────── */}

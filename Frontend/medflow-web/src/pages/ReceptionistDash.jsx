@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import AppointmentsTable from '../components/receptionist/AppointmentsTable';
-import NewPatientRegistration from '../components/receptionist/NewPatientRegistration';
-import PatientCheckout from '../components/receptionist/PatientCheckout';
-import ReceptionSidePanel from '../components/receptionist/ReceptionSidePanel';
-import Header from '../components/Header';
-import { getAllAppointments } from '../services/appointmentAPI';
-import { getAllQueues } from '../services/queueAPI';
-import { useSocket } from '../hooks/useSocket';
-import { SOCKET_EVENTS } from '../sockets/socketEvents';
+import { useState, useMemo, useEffect, useCallback } from "react";
+import AppointmentsTable from "../components/receptionist/AppointmentsTable";
+import NewPatientRegistration from "../components/receptionist/NewPatientRegistration";
+import PatientCheckout from "../components/receptionist/PatientCheckout";
+import ReceptionSidePanel from "../components/receptionist/ReceptionSidePanel";
+import Header from "../components/Header";
+import { getAllAppointments } from "../services/appointmentAPI";
+import { getAllQueues } from "../services/queueAPI";
+import { useSocket } from "../hooks/useSocket";
+import { SOCKET_EVENTS } from "../sockets/socketEvents";
 
 function ReceptionistDash() {
   const socket = useSocket();
@@ -15,10 +15,10 @@ function ReceptionistDash() {
   const [appointmentList, setAppointmentList] = useState([]);
   const [billingQueue, setBillingQueue] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [subView, setSubView] = useState('list');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCheckoutQueueId, setSelectedCheckoutQueueId] = useState('');
+  const [error, setError] = useState("");
+  const [subView, setSubView] = useState("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCheckoutQueueId, setSelectedCheckoutQueueId] = useState("");
 
   // ─── Data fetchers ──────────────────────────────────────────────────────────
   const fetchAppointments = useCallback(async () => {
@@ -26,7 +26,7 @@ function ReceptionistDash() {
       const data = await getAllAppointments();
       setAppointmentList(Array.isArray(data) ? data : []);
     } catch {
-      console.error('Failed to load appointments');
+      console.error("Failed to load appointments");
     }
   }, []);
 
@@ -34,7 +34,9 @@ function ReceptionistDash() {
     try {
       const data = await getAllQueues();
       const queues = Array.isArray(data) ? data : [];
-      setBillingQueue(queues.filter((q) => q.stage === 'BILLING' && q.status === 'WAITING'));
+      setBillingQueue(
+        queues.filter((q) => q.stage === "BILLING" && q.status === "WAITING"),
+      );
     } catch {
       setBillingQueue([]);
     }
@@ -47,7 +49,7 @@ function ReceptionistDash() {
         setLoading(true);
         await Promise.allSettled([fetchAppointments(), fetchBillingQueue()]);
       } catch {
-        setError('Failed to load some dashboard data');
+        setError("Failed to load some dashboard data");
       } finally {
         setLoading(false);
       }
@@ -99,8 +101,8 @@ function ReceptionistDash() {
       .filter((a) => isToday(a.appointmentDate))
       .map((app) => ({
         id: app.id,
-        patientName: app.patient?.fullName ?? 'Unknown',
-        doctor: app.user?.name ?? 'Unassigned',
+        patientName: app.patient?.fullName ?? "Unknown",
+        doctor: app.user?.name ?? "Unassigned",
         doctorSpecialtyId: app.user?.specialtyId ?? null,
         reason: app.reason,
         startTime: app.startTime,
@@ -111,16 +113,25 @@ function ReceptionistDash() {
         status: app.status,
         date: app.appointmentDate,
       }))
-      .filter((apt) => apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()));
+      .filter((apt) =>
+        apt.patientName.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
   }, [appointmentList, searchQuery]);
 
   const financialMetrics = useMemo(() => {
     const latestTransaction = [...appointmentList]
-      .filter((a) => a.invoice?.paymentStatus === 'PAID')
-      .sort((a, b) => new Date(b.invoice?.issuedDate || b.appointmentDate) - new Date(a.invoice?.issuedDate || a.appointmentDate))[0];
+      .filter((a) => a.invoice?.paymentStatus === "PAID")
+      .sort(
+        (a, b) =>
+          new Date(b.invoice?.issuedDate || b.appointmentDate) -
+          new Date(a.invoice?.issuedDate || a.appointmentDate),
+      )[0];
 
     const total = appointmentList
-      .filter((a) => isToday(a.appointmentDate) && a.invoice?.paymentStatus === 'PAID')
+      .filter(
+        (a) =>
+          isToday(a.appointmentDate) && a.invoice?.paymentStatus === "PAID",
+      )
       .reduce((sum, app) => sum + Number(app.invoice?.totalAmount ?? 0), 0)
       .toFixed(2);
 
@@ -139,73 +150,148 @@ function ReceptionistDash() {
     };
   }, [appointmentList, billingQueue]);
 
+  // ─── Tabs Configuration ──────────────────────────────────────────────────────
+  const tabs = [
+    {
+      id: "list",
+      label: "Arrival",
+      badge: null,
+    },
+    {
+      id: "register",
+      label: "New Registration",
+      badge: null,
+    },
+    {
+      id: "checkout",
+      label: "Billing Cashier",
+      badge: billingQueue.length > 0 ? billingQueue.length : null,
+    },
+    {
+      id: "billingReport",
+      label: "Billing Report",
+      badge: null,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          searchPlaceholder="Search patients..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            </div>
+            <p className="text-gray-600 font-medium">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          searchPlaceholder="Search patients..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchChange}
+        />
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+              <span className="text-xl text-red-600">⚠️</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Unable to load dashboard
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden">
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
+      {/* Header */}
       <Header
         searchPlaceholder="Search patients..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
       />
 
-      <div className="flex-1 flex p-6 gap-5 min-h-0 overflow-hidden">
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-
-          {/* Subview Nav Tabs */}
-          <div className="flex items-center gap-8 mb-4 text-sm font-semibold">
-            <button
-              onClick={() => setSubView('list')}
-              className={`pb-1 border-b-2 transition-all ${
-                subView === 'list'
-                  ? 'border-teal-700 text-teal-800 font-bold'
-                  : 'border-transparent text-slate-400'
-              }`}
-            >
-              Arrival
-            </button>
-            <button
-              onClick={() => setSubView('register')}
-              className={`pb-1 border-b-2 transition-all ${
-                subView === 'register'
-                  ? 'border-teal-700 text-teal-800 font-bold'
-                  : 'border-transparent text-slate-400'
-              }`}
-            >
-              New Registration
-            </button>
-            <button
-              onClick={() => setSubView('checkout')}
-              className={`pb-1 border-b-2 transition-all ${
-                subView === 'checkout'
-                  ? 'border-teal-700 text-teal-800 font-bold'
-                  : 'border-transparent text-slate-400'
-              }`}
-            >
-              Billing Cashier
-              {billingQueue.length > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-600 text-white text-[10px] font-bold">
-                  {billingQueue.length}
-                </span>
-              )}
-            </button>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Tab Navigation */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-4 sm:px-6 lg:px-8 2xl:px-10">
+            <div className="flex items-center gap-1 sm:gap-2 -mb-px overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSubView(tab.id)}
+                  className={`
+                    px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base font-medium whitespace-nowrap
+                    border-b-2 transition-all duration-200 flex items-center gap-2
+                    ${
+                      subView === tab.id
+                        ? "border-blue-600 text-blue-700"
+                        : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+                    }
+                  `}
+                >
+                  {tab.label}
+                  {tab.badge !== null && (
+                    <span className="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold leading-none">
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
+        </div>
 
-          <div className="flex-1 flex min-h-0">
-            {subView === 'list' && (
-              <AppointmentsTable
-                appointments={activeAppointmentsList}
-                onRefresh={fetchAppointments}
-              />
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex min-h-0 overflow-auto">
+            {/* Arrival List View */}
+            {subView === "list" && (
+              <div className="w-full">
+                <AppointmentsTable
+                  appointments={activeAppointmentsList}
+                  onRefresh={fetchAppointments}
+                />
+              </div>
             )}
-            {subView === 'register' && (
-              <NewPatientRegistration
-                onCompleteRegistration={() => {
-                  fetchBillingQueue();
-                  setSubView('list');
-                }}
-              />
+
+            {/* New Patient Registration View */}
+            {subView === "register" && (
+              <div className="w-full px-4 sm:px-6 lg:px-8 2xl:px-10 py-6 sm:py-8">
+                <NewPatientRegistration
+                  onCompleteRegistration={() => {
+                    fetchBillingQueue();
+                    setSubView("list");
+                  }}
+                />
+              </div>
             )}
-            {subView === 'checkout' && (
-              <>
+
+            {/* Billing Checkout View */}
+            {subView === "checkout" && (
+              <div className="w-full">
                 <PatientCheckout
                   billingQueue={billingQueue}
                   selectedQueueId={selectedCheckoutQueueId}
@@ -213,16 +299,22 @@ function ReceptionistDash() {
                   onPaymentComplete={() => {
                     fetchBillingQueue();
                     fetchAppointments();
-                    setSelectedCheckoutQueueId('');
+                    setSelectedCheckoutQueueId("");
                   }}
                 />
-                <div className="pl-10 shrink-0">
-                  <ReceptionSidePanel
-                    setSubView={setSubView}
-                    stats={financialMetrics}
-                  />
-                </div>
-              </>
+              </div>
+            )}
+
+            {/* Billing Report View */}
+            {subView === "billingReport" && (
+              <div className="w-full px-4 sm:px-6 lg:px-8 2xl:px-10 py-6 sm:py-8">
+                <ReceptionSidePanel
+                  pendingInvoices={financialMetrics.pendingInvoices}
+                  collectionsToday={financialMetrics.collectionsToday}
+                  transactions={financialMetrics.transactions}
+                  setSubView={setSubView}
+                />
+              </div>
             )}
           </div>
         </div>
