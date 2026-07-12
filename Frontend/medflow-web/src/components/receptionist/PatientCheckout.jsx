@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { ListOrdered, DollarSign, Activity, CreditCard, Clock, ChevronDown, Loader2, Plus, Trash2, FileText, CheckCircle2 } from 'lucide-react';
+import { ListOrdered, DollarSign, Activity, CreditCard, Clock, ChevronDown, Loader2, Plus, Trash2, FileText, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { getAllInvoices, createInvoice, updateInvoiceById, issuePayment } from '../../services/billingAPI';
 import { createInvoiceItem } from '../../services/invoiceItemAPI';
 import { updateQueue } from '../../services/queueAPI';
@@ -38,6 +38,9 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
   const [pendingItems, setPendingItems] = useState([]);
   const [generating, setGenerating] = useState(false);
 
+  // Mobile view state
+  const [mobileView, setMobileView] = useState('queue'); // 'queue', 'invoice', 'payment'
+
   const fetchInvoices = useCallback(async () => {
     setInvoicesLoading(true);
     try {
@@ -60,10 +63,11 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
     if (billingQueue.length > 0) fetchInvoices();
   }, [billingQueue, fetchInvoices]);
 
-  // Socket listeners
   useEffect(() => {
     if (!socket) return;
-    const refresh = () => { fetchInvoices(); };
+    const refresh = () => {
+      fetchInvoices();
+    };
     socket.on(SOCKET_EVENTS.PATIENT_MOVED_STAGE, refresh);
     socket.on(SOCKET_EVENTS.QUEUE_UPDATED, refresh);
     socket.on(SOCKET_EVENTS.BILL_GENERATED, refresh);
@@ -107,7 +111,7 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
       items: invoice?.invoiceItem ?? [],
       total: invoice ? Number(invoice.totalAmount) : 0,
       isPaid: invoice?.paymentStatus === 'PAID',
-      needsFollowUp: queueEntry?.appointment?.medicalRecord?.needsFollowUp ?? false, 
+      needsFollowUp: queueEntry?.appointment?.medicalRecord?.needsFollowUp ?? false,
       diagnosis: queueEntry?.appointment?.medicalRecord?.diagnosis ?? '',
       prescribedMeds: (queueEntry?.appointment?.prescriptions ?? [])
         .flatMap(p => p.prescriptionMedications ?? [])
@@ -133,7 +137,7 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
     setNewItemDesc('');
     setNewItemType('Service');
     setNewItemQty(1);
-    setNewItemPrice();
+    setNewItemPrice(0);
   };
 
   const handleRemoveItem = (itemId) => {
@@ -171,6 +175,7 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
 
       setPendingItems([]);
       setSuccess('Invoice generated successfully.');
+      setMobileView('payment');
       await fetchInvoices();
     } catch (err) {
       setInvoiceError(err?.response?.data?.message || 'Failed to generate invoice.');
@@ -241,369 +246,575 @@ export default function PatientCheckout({ billingQueue = [], selectedQueueId, on
     }
   };
 
-  return (
-    <div className="flex flex-1 gap-5 min-h-0 items-start text-left w-full h-full">
+  // Empty State
+  if (queueCards.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center px-4 py-12">
+        <div className="text-center max-w-md">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+            <CreditCard className="w-6 h-6 text-blue-600" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+            No transactions pending
+          </h3>
+          <p className="text-sm text-gray-600">
+            There are no patients waiting at the cashier at this time.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-      {/* COLUMN 1: Billing Queue */}
-      <div className="w-full xl:w-64 bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col h-full shrink-0 overflow-hidden">
-        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <ListOrdered className="w-3.5 h-3.5 text-slate-400" />
-          Billing Queue ({queueCards.length})
-        </h4>
-        <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-          {queueCards.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => onSelectQueueId(p.id)}
-              className={`p-3 rounded-lg border text-xs cursor-pointer transition-all ${
-                activeQueueId === p.id
-                  ? 'bg-teal-400/10 border-teal-300 text-teal-900 font-bold'
-                  : 'bg-white border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <div className="flex justify-between items-start font-bold">
-                <p className="truncate max-w-[120px]">{p.name}</p>
-                <span className="text-[10px] text-slate-400 font-mono font-medium shrink-0 ml-1">{p.time}</span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">ID: {p.patientId}</p>
-              <span className="inline-flex items-center gap-1 mt-2 text-[9px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded bg-white/80 border border-teal-200 text-teal-700">
-                <Clock className="w-2.5 h-2.5" /> In Queue
-              </span>
-            </div>
-          ))}
-          {queueCards.length === 0 && (
-            <p className="text-slate-400 text-xs text-center mt-8">
-              No patients waiting at cashier.
-            </p>
-          )}
+  return (
+    <div className="w-full h-full flex flex-col bg-gray-50 overflow-hidden">
+      {/* Mobile Tab Navigation */}
+      <div className="md:hidden flex-shrink-0 border-b border-gray-200 bg-white">
+        <div className="flex gap-1 px-4 overflow-x-auto -mb-px">
+          <button
+            onClick={() => setMobileView('queue')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+              mobileView === 'queue'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Queue
+          </button>
+          <button
+            onClick={() => setMobileView('invoice')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+              mobileView === 'invoice'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Invoice
+          </button>
+          <button
+            onClick={() => setMobileView('payment')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+              mobileView === 'payment'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Payment
+          </button>
         </div>
       </div>
 
-      {activeInvoice ? (
-        <>
-          {/* COLUMN 2: Invoice Ledger or Builder */}
-          <div className="flex-2 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/40 text-xs grid grid-cols-2 gap-4 shrink-0">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Patient</p>
-                <p className="font-bold text-slate-900 text-sm mt-0.5">{activeInvoice.patientName}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide font-mono">
-                  Patient ID: {activeInvoice.patientId}
-                </p>
-                {activeInvoice.appointmentId && (
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    Appt: #{activeInvoice.appointmentId}
-                  </p>
-                )}
-              </div>
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col md:flex-row gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6 2xl:p-8">
+        
+        {/* Queue Column */}
+        <div
+          className={`${
+            mobileView === 'queue' ? 'block' : 'hidden md:block'
+          } flex-shrink-0 w-full md:w-72 lg:w-80 flex flex-col bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm min-h-0`}
+        >
+          <div className="flex-shrink-0 px-4 sm:px-5 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
+              <ListOrdered className="w-4 h-4 text-gray-600" />
+              Queue ({queueCards.length})
+            </h3>
+          </div>
 
-            {activeInvoice.needsFollowUp && (
-              <div className="border-t border-amber-200 bg-amber-50/50 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-amber-800 font-semibold text-xs">
-                  Follow-up appointment recommended
-                </div>
-                {!showFollowUpForm ? (
-                  <button
-                    onClick={() => setShowFollowUpForm(true)}
-                    className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg"
-                  >
-                    Create Follow-up Appointment
-                  </button>
-                ) : (
-                  <div className="space-y-2 text-xs">
-                    <input
-                      type="date"
-                      value={followUpDate}
-                      onChange={e => setFollowUpDate(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                    <select
-                      value={followUpDoctor}
-                      onChange={e => setFollowUpDoctor(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2"
-                    >
-                      <option value="">Select doctor</option>
-                      {doctors.map(d => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={followUpReason}
-                      onChange={e => setFollowUpReason(e.target.value)}
-                      placeholder="Reason for follow-up"
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleCreateFollowUp}
-                        disabled={creatingFollowUp}
-                        className="bg-teal-700 text-white font-bold px-4 py-2 rounded-lg"
-                      >
-                        {creatingFollowUp ? 'Creating...' : 'Create'}
-                      </button>
-                      <button
-                        onClick={() => setShowFollowUpForm(false)}
-                        className="text-slate-500 font-semibold px-4 py-2"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeInvoice.invoice ? (
-              <>
-                {activeInvoice.isPaid && (
-                  <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100 text-xs text-emerald-700 font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Invoice already marked as PAID
-                  </div>
-                )}
-
-                <div className="flex-1 overflow-y-auto min-h-0">
-                  {invoicesLoading ? (
-                    <div className="flex items-center justify-center py-12 text-slate-400 text-xs gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Loading invoice...
-                    </div>
-                  ) : activeInvoice.items.length > 0 ? (
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/60 sticky top-0">
-                          <th className="px-6 py-2.5">Description</th>
-                          <th className="px-6 py-2.5 text-center">Qty</th>
-                          <th className="px-6 py-2.5 text-right">Unit Price</th>
-                          <th className="px-6 py-2.5 text-right">Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                        {activeInvoice.items.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-6 py-3.5">{item.description}</td>
-                            <td className="px-6 py-3.5 text-center">{item.quantity}</td>
-                            <td className="px-6 py-3.5 text-right font-mono">${Number(item.unitPrice).toFixed(2)}</td>
-                            <td className="px-6 py-3.5 text-right font-mono font-semibold">${Number(item.subTotal).toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="flex items-center justify-center py-12 text-slate-400 text-xs gap-2">
-                      <Activity className="w-4 h-4" />
-                      Invoice has no line items yet.
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-5 border-t border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Balance Due</span>
-                  <span className="text-xl font-black text-slate-900 font-mono">
-                    ${activeInvoice.total.toFixed(2)}
+          <div className="flex-1 overflow-y-auto space-y-2 p-4 sm:p-5 min-h-0">
+            {queueCards.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  onSelectQueueId(p.id);
+                  setMobileView('invoice');
+                }}
+                className={`w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                  activeQueueId === p.id
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h4 className="font-semibold text-sm text-gray-900 truncate">
+                    {p.name}
+                  </h4>
+                  <span className="text-xs text-gray-500 font-mono flex-shrink-0">
+                    {p.time}
                   </span>
                 </div>
-              </>
-            ) : (
-              <>
-                {/* Invoice Builder */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" /> Build Invoice
-                  </h4>
+                <p className="text-xs text-gray-600 font-mono mb-2">
+                  ID: {p.patientId}
+                </p>
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full px-2.5 py-1">
+                  <Clock className="w-3 h-3" />
+                  In Queue
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
-                  {invoiceError && (
-                    <div className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-                      {invoiceError}
-                    </div>
-                  )}
+        {/* Invoice/Payment Area */}
+        {activeInvoice ? (
+          <div className={`${
+            mobileView !== 'queue' ? 'flex' : 'hidden md:flex'
+          } flex-1 flex-col gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden`}
+          >
+            {/* Invoice Section */}
+            <div
+              className={`${
+                mobileView === 'payment' ? 'hidden md:flex' : 'flex'
+              } flex-1 flex-col bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm min-h-0 overflow-hidden`}
+            >
+              {/* Patient Header */}
+              <div className="flex-shrink-0 px-4 sm:px-5 lg:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
+                <div className="space-y-2">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                    {activeInvoice.patientName}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 font-mono">
+                    Patient ID: {activeInvoice.patientId}
+                    {activeInvoice.appointmentId && ` • Appt: #${activeInvoice.appointmentId}`}
+                  </p>
+                </div>
+              </div>
 
-                  {activeInvoice.diagnosis && (
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Diagnosis</p>
-                      <p className="font-medium text-slate-700">{activeInvoice.diagnosis}</p>
-                      {activeInvoice.prescribedMeds.length > 0 && (
-                        <>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2 mb-1">Prescribed Medications</p>
-                          <div className="space-y-1">
-                            {activeInvoice.prescribedMeds.map((m, i) => (
-                              <div key={i} className="flex justify-between items-center">
-                                <span className="font-medium text-slate-700">{m.name} — {m.dosage}mg x{m.frequency}/day</span>
-                                <span className="font-mono text-slate-500">${m.price.toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+              {/* Follow-up Section */}
+              {activeInvoice.needsFollowUp && (
+                <div className="flex-shrink-0 border-b border-amber-200 bg-amber-50 p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-900 font-semibold text-sm">
+                    Follow-up appointment recommended
+                  </div>
 
-                  {/* Add item row */}
-                  <div className="grid grid-cols-2 gap-2 text-xs items-end">
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500">Description</label>
-                      <input type="text" value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)} placeholder="e.g. Consultation, Medication, Lab, Procedure" className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50/50 text-slate-800 focus:outline-none focus:border-teal-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500">Type</label>
-                      <select value={newItemType} onChange={e => setNewItemType(e.target.value)} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/50 text-slate-700 focus:outline-none focus:border-teal-600">
-                        {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500">Qty</label>
-                      <input type="number" min="1" value={newItemQty} onChange={e => setNewItemQty(Number(e.target.value))} className="w-full border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/50 text-slate-800 focus:outline-none focus:border-teal-600" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500">Price</label>
-                      <div className="flex gap-1">
-                        <input type="number" min="0" step="0.01" value={newItemPrice} onChange={e => setNewItemPrice(Number(e.target.value))} className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50/50 text-slate-800 focus:outline-none focus:border-teal-600" />
-                        <button type="button" onClick={handleAddItem} className="px-2 py-1.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 shrink-0">
-                          <Plus className="w-3.5 h-3.5" />
+                  {!showFollowUpForm ? (
+                    <button
+                      onClick={() => setShowFollowUpForm(true)}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm"
+                    >
+                      Create Follow-up
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                          type="date"
+                          value={followUpDate}
+                          onChange={e => setFollowUpDate(e.target.value)}
+                          className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                        <select
+                          value={followUpDoctor}
+                          onChange={e => setFollowUpDoctor(e.target.value)}
+                          className="px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+                          <option value="">Select doctor</option>
+                          {doctors.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <input
+                        type="text"
+                        value={followUpReason}
+                        onChange={e => setFollowUpReason(e.target.value)}
+                        placeholder="Reason for follow-up"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleCreateFollowUp}
+                          disabled={creatingFollowUp || !followUpDate || !followUpDoctor}
+                          className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors"
+                        >
+                          {creatingFollowUp ? 'Creating...' : 'Create'}
+                        </button>
+                        <button
+                          onClick={() => setShowFollowUpForm(false)}
+                          className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-semibold rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          Cancel
                         </button>
                       </div>
                     </div>
-                  </div>
+                  )}
+                </div>
+              )}
 
-                  {/* Pending items list */}
-                  {pendingItems.length > 0 && (
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-left border-collapse text-[11px]">
+              {/* Invoice Content */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {activeInvoice.invoice ? (
+                  <>
+                    {activeInvoice.isPaid && (
+                      <div className="flex-shrink-0 px-4 sm:px-5 lg:px-6 py-3 bg-emerald-50 border-b border-emerald-200 text-sm font-semibold text-emerald-700 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Invoice marked as PAID
+                      </div>
+                    )}
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
                         <thead>
-                          <tr className="text-[10px] font-bold uppercase text-slate-400 bg-slate-50">
-                            <th className="px-3 py-2">Description</th>
-                            <th className="px-3 py-2">Type</th>
-                            <th className="px-3 py-2 text-center">Qty</th>
-                            <th className="px-3 py-2 text-right">Price</th>
-                            <th className="px-3 py-2 text-right">Subtotal</th>
-                            <th className="px-3 py-2"></th>
+                          <tr className="border-b border-gray-200 bg-gray-50">
+                            <th className="px-4 sm:px-5 lg:px-6 py-3 font-bold text-xs uppercase tracking-wide text-gray-600">
+                              Description
+                            </th>
+                            <th className="px-4 sm:px-5 lg:px-6 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-center">
+                              Qty
+                            </th>
+                            <th className="px-4 sm:px-5 lg:px-6 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-right">
+                              Price
+                            </th>
+                            <th className="px-4 sm:px-5 lg:px-6 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-right">
+                              Total
+                            </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {pendingItems.map(item => (
-                            <tr key={item.id} className="text-slate-700">
-                              <td className="px-3 py-2 font-medium">{item.description}</td>
-                              <td className="px-3 py-2 text-slate-500">{item.type}</td>
-                              <td className="px-3 py-2 text-center">{item.quantity}</td>
-                              <td className="px-3 py-2 text-right font-mono">${item.unitPrice.toFixed(2)}</td>
-                              <td className="px-3 py-2 text-right font-mono font-semibold">${item.subTotal.toFixed(2)}</td>
-                              <td className="px-3 py-2 text-right">
-                                <button onClick={() => handleRemoveItem(item.id)} className="text-rose-400 hover:text-rose-600">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
+                        <tbody className="divide-y divide-gray-100">
+                          {activeInvoice.items.map((item) => (
+                            <tr key={item.id} className="hover:bg-gray-50">
+                              <td className="px-4 sm:px-5 lg:px-6 py-3 text-gray-900 font-medium">
+                                {item.description}
+                              </td>
+                              <td className="px-4 sm:px-5 lg:px-6 py-3 text-gray-600 text-center">
+                                {item.quantity}
+                              </td>
+                              <td className="px-4 sm:px-5 lg:px-6 py-3 text-gray-600 font-mono text-right">
+                                ${Number(item.unitPrice).toFixed(2)}
+                              </td>
+                              <td className="px-4 sm:px-5 lg:px-6 py-3 text-gray-900 font-bold font-mono text-right">
+                                ${Number(item.subTotal).toFixed(2)}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  )}
 
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Total: <span className="text-slate-900 font-mono text-sm">${totalPending.toFixed(2)}</span>
-                    </span>
-                  </div>
+                    <div className="flex-shrink-0 px-4 sm:px-5 lg:px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+                      <span className="font-bold text-gray-900 text-sm">Total Due</span>
+                      <span className="text-2xl sm:text-3xl font-black text-gray-900 font-mono">
+                        ${activeInvoice.total.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {invoiceError && (
+                      <div className="flex-shrink-0 mx-4 sm:mx-5 mt-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg text-sm font-semibold text-red-700">
+                        {invoiceError}
+                      </div>
+                    )}
 
-                  <button
-                      onClick={handleGenerateInvoice}
-                      disabled={pendingItems.length === 0 || generating}
-                      className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-4 py-2 rounded-lg text-xs transition shadow-sm"
-                    >
-                      {generating ? (
-                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</>
-                      ) : (
-                        <><FileText className="w-3.5 h-3.5" /> Generate Invoice</>
+                    {/* Diagnosis Section */}
+                    {activeInvoice.diagnosis && (
+                      <div className="p-4 sm:p-5 space-y-4 border-b border-gray-100">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-2">
+                            Diagnosis
+                          </p>
+                          <p className="font-semibold text-gray-900 text-sm">
+                            {activeInvoice.diagnosis}
+                          </p>
+                        </div>
+
+                        {activeInvoice.prescribedMeds.length > 0 && (
+                          <div className="space-y-2 pt-3 border-t border-gray-100">
+                            <p className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-3">
+                              Prescribed Medications
+                            </p>
+                            <div className="space-y-2">
+                              {activeInvoice.prescribedMeds.map((m, i) => (
+                                <div
+                                  key={i}
+                                  className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-gray-900 text-sm">
+                                      {m.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-0.5">
+                                      {m.dosage}mg × {m.frequency}/day
+                                    </p>
+                                  </div>
+                                  <span className="font-mono font-semibold text-gray-900">
+                                    ${m.price.toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Invoice Builder */}
+                    <div className="p-4 sm:p-5 space-y-5">
+                      <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-gray-600" />
+                        Build Invoice
+                      </h4>
+
+                      {/* Add Item Form */}
+                      <div className="space-y-4 p-4 sm:p-5 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            value={newItemDesc}
+                            onChange={e => setNewItemDesc(e.target.value)}
+                            placeholder="e.g. Consultation, Lab test"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                              Type
+                            </label>
+                            <select
+                              value={newItemType}
+                              onChange={e => setNewItemType(e.target.value)}
+                              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {ITEM_TYPES.map(t => (
+                                <option key={t} value={t}>{t}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={newItemQty}
+                              onChange={e => setNewItemQty(Number(e.target.value))}
+                              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                            Unit Price
+                          </label>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <DollarSign className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={newItemPrice || ''}
+                                onChange={e => setNewItemPrice(Number(e.target.value))}
+                                className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAddItem}
+                              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm flex items-center justify-center gap-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span className="hidden sm:inline">Add</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pending Items */}
+                      {pendingItems.length > 0 && (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-gray-200 bg-gray-50">
+                                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-left">
+                                    Description
+                                  </th>
+                                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-center">
+                                    Qty
+                                  </th>
+                                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-right">
+                                    Price
+                                  </th>
+                                  <th className="px-4 py-3 font-bold text-xs uppercase tracking-wide text-gray-600 text-right">
+                                    Total
+                                  </th>
+                                  <th className="px-4 py-3 w-10" />
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {pendingItems.map(item => (
+                                  <tr key={item.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-gray-900 font-medium">
+                                      {item.description}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600 text-center">
+                                      {item.quantity}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-600 font-mono text-right">
+                                      ${item.unitPrice.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-900 font-bold font-mono text-right">
+                                      ${item.subTotal.toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      <button
+                                        onClick={() => handleRemoveItem(item.id)}
+                                        className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="px-4 py-3 sm:py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                            <span className="font-bold text-gray-900">
+                              Total: <span className="font-mono text-lg">${totalPending.toFixed(2)}</span>
+                            </span>
+                            <button
+                              onClick={handleGenerateInvoice}
+                              disabled={pendingItems.length === 0 || generating}
+                              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm"
+                            >
+                              {generating ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="w-4 h-4" />
+                                  Generate Invoice
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       )}
-                    </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* COLUMN 3: Payment Processing */}
-          <div className="w-full xl:w-80 bg-white border border-slate-200 rounded-xl p-4 shadow-sm text-xs space-y-4 shrink-0 h-full">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-              <h4 className="font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-slate-400" /> Payment Processing
-              </h4>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-            {paymentError && (
-              <div className="text-[11px] font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-                {paymentError}
+            {/* Payment Panel */}
+            <div
+              className={`${
+                mobileView === 'payment' ? 'flex' : 'hidden md:flex'
+              } flex-col md:w-80 lg:w-96 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm`}
+            >
+              <div className="flex-shrink-0 px-4 sm:px-5 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
+                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-gray-600" />
+                  Payment
+                </h3>
               </div>
-            )}
 
-            {success && (
-              <div className="text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3" /> {success}
-              </div>
-            )}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 space-y-5 min-h-0">
+                {paymentError && (
+                  <div className="flex items-start gap-3 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm font-semibold text-red-700">{paymentError}</p>
+                  </div>
+                )}
 
-            {activeInvoice.invoice ? (
-              <>
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-slate-600">Payment Method</label>
-                  <div className="relative">
-                    <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 bg-slate-50/50 text-slate-700 font-medium focus:outline-none focus:border-slate-300 appearance-none"
-                      disabled={activeInvoice.isPaid}
+                {success && (
+                  <div className="flex items-start gap-3 p-3 sm:p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm font-semibold text-emerald-700">{success}</p>
+                  </div>
+                )}
+
+                {activeInvoice.invoice ? (
+                  <>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
+                        Payment Method
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        disabled={activeInvoice.isPaid}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m} value={m}>
+                            {m.replace('_', ' ')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
+                        Amount Due
+                      </label>
+                      <div className="relative">
+                        <DollarSign className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={activeInvoice.total.toFixed(2)}
+                          readOnly
+                          className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm font-mono font-bold bg-gray-50"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCompleteCheckout}
+                      disabled={processing || activeInvoice.isPaid}
+                      className="w-full py-3 px-4 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center gap-2"
                     >
-                      {PAYMENT_METHODS.map((m) => (
-                        <option key={m} value={m}>{m.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      {processing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : activeInvoice.isPaid ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          Already Paid
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4" />
+                          Complete Checkout
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">
+                      Generate an invoice to enable payment processing.
+                    </p>
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-semibold text-slate-600">Amount Due</label>
-                  <div className="relative">
-                    <DollarSign className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={activeInvoice.total.toFixed(2)}
-                      readOnly
-                      className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2.5 bg-slate-50 text-slate-500 font-mono text-base font-bold"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleCompleteCheckout}
-                  disabled={processing || activeInvoice.isPaid}
-                  className="w-full flex items-center justify-center gap-2 bg-teal-700 hover:bg-teal-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg transition shadow-sm uppercase tracking-wide"
-                >
-                  {processing ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
-                  ) : activeInvoice.isPaid ? (
-                    <><CheckCircle2 className="w-4 h-4" /> Already Paid</>
-                  ) : (
-                    <><CreditCard className="w-4 h-4" /> Complete Checkout</>
-                  )}
-                </button>
-              </>
-            ) : (
-              <div className="text-center text-slate-400 py-6 text-xs">
-                Generate an invoice first to enable payment processing.
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </>
-      ) : (
-        <div className="flex-1 bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-400 font-medium shadow-sm">
-          {queueCards.length > 0
-            ? 'Select a patient from the billing queue.'
-            : 'No transactions pending settlement at this time.'}
-        </div>
-      )}
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-500 px-4">
+              <p className="text-sm">
+                {queueCards.length > 0
+                  ? 'Select a patient from the queue to get started.'
+                  : 'No patients in the billing queue.'}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

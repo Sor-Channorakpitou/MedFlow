@@ -62,12 +62,7 @@ function getBpStatus(bpString) {
 }
 
 function NurseDash() {
-  // Consume your centralized real-time sync layer engine
-  const {
-    triageQueue: rawQueue,
-    loading: isLoadingQueue,
-  } = useWorkflow();
-
+  const { triageQueue: rawQueue, loading: isLoadingQueue } = useWorkflow();
   const { toasts, showToast, dismissToast } = useToast();
 
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState(null);
@@ -78,6 +73,7 @@ function NurseDash() {
   const [logs, setLogs] = useState([]);
   const [claimedId, setClaimedId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mobileView, setMobileView] = useState("queue"); // 'queue' or 'triage'
 
   const [bp, setBp] = useState("120/80");
   const [hr, setHr] = useState("80");
@@ -96,7 +92,6 @@ function NurseDash() {
     const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
 
     return safeQueue.map((queue) => {
-      // 1. Perform the standard mapping first so we have the data
       const patient = queue.patient || queue.Patient || {};
       const triage = queue.triage || queue.Triage || null;
       const appointment = queue.appointment || queue.Appointment || {};
@@ -131,7 +126,6 @@ function NurseDash() {
         notes: triage?.note || "",
       };
 
-      // 2. Override with local state if this is the selected patient
       if (queue.id === selectedId) {
         return {
           ...basePatientData,
@@ -220,6 +214,7 @@ function NurseDash() {
     setWeight(patient.vitals.weight);
     setSpo2(patient.vitals?.spo2 || "98");
     setSelectedSpecialtyId(null);
+    setMobileView("triage");
 
     console.log("Selected patient:", patient);
   };
@@ -261,7 +256,7 @@ function NurseDash() {
         spo2: parsedSpo2,
         urgencyLevel: URGENCY_MAP[urgencyLevel] || "MEDIUM",
         note: notes || null,
-        requiredSpecialtyId: selectedSpecialtyId || null
+        requiredSpecialtyId: selectedSpecialtyId || null,
       };
 
       const matchedRawItem = rawQueue.find(
@@ -297,6 +292,7 @@ function NurseDash() {
 
       setSelectedId("");
       setNotes("");
+      setMobileView("queue");
       showToast("Case successfully triaged and handed over!", "success");
     } catch (err) {
       console.error("Pipeline breakdown pushing data forward:", err);
@@ -310,43 +306,43 @@ function NurseDash() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-[#f8fafc] text-left text-slate-900 antialiased">
+    <div className="flex flex-col h-screen bg-gray-50 text-left text-gray-900">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      
+
       <Header
         user={currentUser}
-        searchPlaceholder="Search patient name, ID, or triage level..."
+        searchPlaceholder="Search patient name, ID..."
         searchValue={search}
         onSearchChange={setSearch}
         hasNotifications={true}
       />
 
-      <main className="flex flex-1 flex-col gap-6 p-6 overflow-hidden">
-        {/* Metric Cards Layout */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 shrink-0">
+      <main className="flex-1 flex flex-col gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 lg:py-6">
+        {/* Metrics Bar - Responsive Grid */}
+        <section className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 shrink-0">
           <MetricCard
-            label="CRITICAL PATIENTS"
-            value={`0${criticalCount}`}
+            label="CRITICAL"
+            value={String(criticalCount).padStart(2, "0")}
             icon={AlertTriangle}
             iconBgColor="bg-rose-50"
             iconColor="text-rose-600"
           />
           <MetricCard
-            label="AVG. WAIT TIME"
-            value="14 min"
+            label="AVG WAIT"
+            value="14m"
             icon={TimerReset}
-            iconBgColor="bg-teal-50"
-            iconColor="text-teal-600"
+            iconBgColor="bg-blue-50"
+            iconColor="text-blue-600"
           />
           <MetricCard
-            label="AWAITING TRIAGE"
+            label="IN QUEUE"
             value={String(reactiveQueue.length).padStart(2, "0")}
             icon={Users}
-            iconBgColor="bg-slate-100"
-            iconColor="text-slate-500"
+            iconBgColor="bg-gray-100"
+            iconColor="text-gray-600"
           />
           <MetricCard
-            label="TOTAL MANAGED TODAY"
+            label="TODAY"
             value={String(rawQueue.length).padStart(2, "0")}
             icon={CheckCircle2}
             iconBgColor="bg-emerald-50"
@@ -354,14 +350,50 @@ function NurseDash() {
           />
         </section>
 
-        {/* Core Workspace Layout */}
-        <section className="grid flex-1 grid-cols-1 gap-6 xl:grid-cols-12 overflow-hidden">
-          {isLoadingQueue ? (
-            <div className="xl:col-span-7 flex items-center justify-center bg-white rounded-xl border p-6 text-slate-400 font-medium">
-              Processing live triage queue streams...
-            </div>
-          ) : (
-            <div className="xl:col-span-7 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm">
+        {/* Mobile Tab Navigation */}
+        <div className="lg:hidden flex-shrink-0 border-b border-gray-200 bg-white rounded-lg -mx-4 sm:-mx-6 px-4 sm:px-6">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setMobileView("queue")}
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+                mobileView === "queue"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Queue ({filteredQueue.length})
+            </button>
+            <button
+              onClick={() => setMobileView("triage")}
+              className={`px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+                mobileView === "triage"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Triage
+            </button>
+          </div>
+        </div>
+
+        {/* Core Workspace - Responsive Layout */}
+        <section className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden">
+          {/* Queue Column */}
+          <div
+            className={`${
+              mobileView === "triage" ? "hidden lg:flex" : "flex"
+            } lg:col-span-7 flex-col bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm min-h-0 overflow-hidden`}
+          >
+            {isLoadingQueue ? (
+              <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mb-3">
+                  <div className="w-6 h-6 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                </div>
+                <p className="text-sm text-gray-600 font-medium">
+                  Loading triage queue...
+                </p>
+              </div>
+            ) : (
               <LiveQueue
                 queue={filteredQueue}
                 selectedId={selectedId}
@@ -370,34 +402,51 @@ function NurseDash() {
                 claimedId={claimedId}
                 onClaim={handleClaimPatient}
               />
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* RIGHT SIDEBAR */}
-          <div className="xl:col-span-5 h-full overflow-hidden flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm break-words">
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <ActiveTriagePanel
-                selectedPatient={selectedPatient}
-                urgencyLevel={urgencyLevel}
-                setUrgencyLevel={setUrgencyLevel}
-                vitals={{ bp, hr, temp, weight, spo2 }}
-                setBp={setBp}
-                setHr={setHr}
-                setTemp={setTemp}
-                setWeight={setWeight}
-                setSpo2={setSpo2}
-                bpStatus={activeBpStatus}
-                notes={notes}
-                setNotes={setNotes}
-                onMoveToDoctor={handleMoveToDoctor}
-                isSubmitting={isSubmitting}
-                urgencyMeta={URGENCY_META}
-                specialties={SPECIALTIES}     
-                selectedSpecialtyId={selectedSpecialtyId}
-                onSpecialtyChange={setSelectedSpecialtyId}
-              />
-            </div>
-            {/* <StationLogs logs={logs} /> */}
+          {/* Triage Panel */}
+          <div
+            className={`${
+              mobileView === "queue" ? "hidden lg:flex" : "flex"
+            } lg:col-span-5 flex-col bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm min-h-0 overflow-hidden`}
+          >
+            {selectedPatient ? (
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <ActiveTriagePanel
+                  selectedPatient={selectedPatient}
+                  urgencyLevel={urgencyLevel}
+                  setUrgencyLevel={setUrgencyLevel}
+                  vitals={{ bp, hr, temp, weight, spo2 }}
+                  setBp={setBp}
+                  setHr={setHr}
+                  setTemp={setTemp}
+                  setWeight={setWeight}
+                  setSpo2={setSpo2}
+                  bpStatus={activeBpStatus}
+                  notes={notes}
+                  setNotes={setNotes}
+                  onMoveToDoctor={handleMoveToDoctor}
+                  isSubmitting={isSubmitting}
+                  urgencyMeta={URGENCY_META}
+                  specialties={SPECIALTIES}
+                  selectedSpecialtyId={selectedSpecialtyId}
+                  onSpecialtyChange={setSelectedSpecialtyId}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No patient selected
+                </h3>
+                <p className="text-sm text-gray-600 text-center">
+                  Select a patient from the queue to begin triage assessment.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </main>

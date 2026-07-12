@@ -1,4 +1,3 @@
-// src/pages/PharmacistDash.jsx
 import { useState, useMemo, useEffect } from "react";
 import PendingFulfillmentList from "../components/pharmacist/PendingFulfillmentList";
 import AllergyBanner from "../components/pharmacist/AllergyBanner";
@@ -7,20 +6,21 @@ import Header from "../components/Header";
 import { useToast } from "../hooks/useToast";
 import ToastContainer from "../components/ToastContainer";
 import { dispensePrescription } from "../services/prescriptionAPI";
-
 import { useWorkflow } from "../hooks/useWorkFlow";
 import { updateQueue } from "../services/queueAPI";
+import { AlertCircle, Package } from "lucide-react";
 
 function PharmacistDash() {
-  const { 
-    prescriptions: rawPrescriptions, 
-    loading: isLoading, 
+  const {
+    prescriptions: rawPrescriptions,
+    loading: isLoading,
   } = useWorkflow();
 
   const { toasts, showToast, dismissToast } = useToast();
-  
+
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileView, setMobileView] = useState("queue"); // 'queue' or 'dispense'
 
   const currentUser = {
     name: "Alex Rivera, PharmD",
@@ -28,7 +28,6 @@ function PharmacistDash() {
     initials: "AR",
   };
 
-  // 1. Safe, exception-free reactive queue parsing
   const reactiveQueue = useMemo(() => {
     const safePrescriptions = Array.isArray(rawPrescriptions) ? rawPrescriptions : [];
 
@@ -87,31 +86,26 @@ function PharmacistDash() {
     }
   }, [reactiveQueue, selectedPrescriptionId]);
 
-
   const activePrescription = useMemo(() => {
     if (reactiveQueue.length === 0) return null;
 
     const currentActive = reactiveQueue.find(
       (p) => p.id === selectedPrescriptionId,
     );
-   
+
     return currentActive || reactiveQueue[0];
   }, [reactiveQueue, selectedPrescriptionId]);
-
-  // const handleToggleDispense = (medItemId) => {
-  //   console.log(`Toggling item dispensation status for item ID: ${medItemId}`);
-  // };
 
   const handleFinalizeDischarge = async () => {
     if (!activePrescription) return;
 
     try {
       const targetId = Number(activePrescription.prescriptionId);
-      
-    
+
       await dispensePrescription(targetId);
 
       setSelectedPrescriptionId("");
+      setMobileView("queue");
       showToast("Prescription dispensed successfully.", "success");
     } catch (err) {
       console.error("Discharge execution error: ", err);
@@ -121,65 +115,138 @@ function PharmacistDash() {
 
   const handleSelectPatient = async (id) => {
     setSelectedPrescriptionId(id);
+    setMobileView("dispense");
     const entry = reactiveQueue.find((p) => p.id === id);
     if (entry?.queueId) {
       try {
-        await updateQueue(entry.queueId, { status: 'PROCESSING' });
-      } catch { /* silent */ }
+        await updateQueue(entry.queueId, { status: "PROCESSING" });
+      } catch {
+        /* silent */
+      }
     }
   };
 
+  // Loading State
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-400 font-medium">
-        Syncing global pharmacy dashboards...
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          user={currentUser}
+          searchPlaceholder="Filter prescriptions..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          hasNotifications={true}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+          <p className="text-gray-600 font-medium">Loading pharmacy dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty State
+  if (!activePrescription) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          user={currentUser}
+          searchPlaceholder="Filter prescriptions..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          hasNotifications={true}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 mb-4">
+            <Package className="w-6 h-6 text-emerald-600" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+            All prescriptions dispensed
+          </h3>
+          <p className="text-sm text-gray-600 text-center max-w-md">
+            All pending prescriptions have been successfully fulfilled and cleared for discharge.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden text-left">
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <Header
         user={currentUser}
-        searchPlaceholder="Filter dispensary records..."
+        searchPlaceholder="Filter prescriptions..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         hasNotifications={true}
       />
 
-      {activePrescription ? (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 p-6 gap-6 min-h-0 overflow-hidden">
+      {/* Mobile Tab Navigation */}
+      <div className="lg:hidden flex-shrink-0 border-b border-gray-200 bg-white">
+        <div className="flex gap-4 px-4 overflow-x-auto -mb-px">
+          <button
+            onClick={() => setMobileView("queue")}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+              mobileView === "queue"
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Queue ({reactiveQueue.length})
+          </button>
+          <button
+            onClick={() => setMobileView("dispense")}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+              mobileView === "dispense"
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Dispense
+          </button>
+        </div>
+      </div>
 
-          <div className="lg:col-span-1 bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-            <PendingFulfillmentList
-              patients={reactiveQueue}
-              selectedId={activePrescription.id}
-              onSelect={handleSelectPatient}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 lg:py-6">
+        
+        {/* Queue Panel */}
+        <div
+          className={`${
+            mobileView === "dispense" ? "hidden lg:flex" : "flex"
+          } w-full lg:w-80 flex-shrink-0 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden`}
+        >
+          <PendingFulfillmentList
+            patients={reactiveQueue}
+            selectedId={activePrescription.id}
+            onSelect={handleSelectPatient}
+          />
+        </div>
+
+        {/* Dispense Panel */}
+        <div
+          className={`${
+            mobileView === "queue" ? "hidden lg:flex" : "flex"
+          } flex-1 flex-col gap-4 sm:gap-5 min-h-0 overflow-hidden`}
+        >
+          {/* Allergy Banner */}
+          <div className="flex-shrink-0">
+            <AllergyBanner text={activePrescription.allergies} />
+          </div>
+
+          {/* Medication Dispensation */}
+          <div className="flex-1 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm p-4 sm:p-5 lg:p-6 min-h-0 overflow-y-auto">
+            <MedicationDispensation
+              patient={activePrescription}
+              onFinalize={handleFinalizeDischarge}
             />
           </div>
-
-        
-          <div className="lg:col-span-2 flex flex-col space-y-4 h-full overflow-y-auto pr-1">
-            <AllergyBanner text={activePrescription.allergies} />
-
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-              <MedicationDispensation
-                patient={activePrescription}
-                // onToggleMed={handleToggleDispense}
-                onFinalize={handleFinalizeDischarge}
-              />
-            </div>
-          </div>
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
-          <p className="text-sm font-medium">
-            All pending prescriptions have been fully compiled and cleared for discharge.
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
