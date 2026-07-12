@@ -1,4 +1,3 @@
-// src/pages/DoctorDash.jsx
 import { useState, useMemo, useEffect } from "react";
 import ActiveConsultationHeader from "../components/doctor/ActiveConsultationHeader";
 import PatientVisitQueue from "../components/doctor/PatientVisitQueue";
@@ -10,9 +9,7 @@ import Header from "../components/Header";
 
 import { useWorkflow } from "../hooks/useWorkFlow";
 import { useToast } from "../hooks/useToast";
-import ToastContainer from "../components/ToastContainer";  
-
-// Retained purely for history line queries matching user selections
+import ToastContainer from "../components/ToastContainer";
 import { getPatientHistory, submitConsultation, claimConsultationPatient } from "../services/consultationAPI";
 import { getAllMedications } from "../services/medicationAPI";
 import { useAuth } from "../hooks/useAuth";
@@ -21,14 +18,16 @@ function DoctorDash() {
   const {
     consultationQueue: rawQueue,
     loading: isLoading,
-    refreshConsultationQueue
+    refreshConsultationQueue,
   } = useWorkflow();
 
   const { toasts, showToast, dismissToast } = useToast();
+  const { user: currentUser } = useAuth();
 
   const [activeQueueId, setActiveQueueId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [patientHistory, setPatientHistory] = useState([]);
+  const [mobileView, setMobileView] = useState("queue"); // 'queue', 'history', 'soap', 'medications'
 
   const [needsFollowUp, setNeedsFollowUp] = useState(false);
   const [prescribedMeds, setPrescribedMeds] = useState([]);
@@ -47,9 +46,6 @@ function DoctorDash() {
     { id: "s3", label: "Dizziness", checked: false },
     { id: "s4", label: "Nausea", checked: false },
   ]);
-
-  const { user } = useAuth();
-  const currentUser = user;
 
   const reactiveQueue = useMemo(() => {
     const safeQueue = Array.isArray(rawQueue) ? rawQueue : [];
@@ -107,7 +103,6 @@ function DoctorDash() {
       );
   }, [rawQueue, searchQuery]);
 
-  // Sync active id with first item if selection drops out
   useEffect(() => {
     if (reactiveQueue.length > 0 && !activeQueueId) {
       setActiveQueueId(reactiveQueue[0].id);
@@ -137,7 +132,6 @@ function DoctorDash() {
 
   useEffect(() => {
     if (!activeCase) {
-      // Clear data immediately if there is no active patient context
       setPrescribedMeds([]);
       setPatientHistory([]);
       setSymptoms((prev) => prev.map((s) => ({ ...s, checked: false })));
@@ -147,12 +141,6 @@ function DoctorDash() {
 
     setPrescribedMeds([]);
     setSymptoms((prev) => prev.map((s) => ({ ...s, checked: false })));
-
-    let parsedVitalsString = "No upstream triage vitals recorded.";
-    if (activeCase.vitals) {
-      const v = activeCase.vitals;
-      parsedVitalsString = `BP: ${v.bloodPressure || "--"} mmHg | HR: ${v.heartRate || "--"} bpm | Temp: ${v.temperature || "--"} °C | Wt: ${v.weight || "--"} kg.`;
-    }
 
     setSoapNotes({
       subjective: "",
@@ -164,7 +152,7 @@ function DoctorDash() {
     getPatientHistory(activeCase.patientId)
       .then((res) => setPatientHistory(res?.history || res || []))
       .catch(() => setPatientHistory([]));
-  }, [activeQueueId, activeCase]); 
+  }, [activeQueueId, activeCase]);
 
   const handleSoapChange = (field, value) => {
     setSoapNotes((prev) => ({ ...prev, [field]: value }));
@@ -175,10 +163,10 @@ function DoctorDash() {
       prev.map((s) => (s.id === id ? { ...s, checked: !s.checked } : s)),
     );
   };
+
   const handleAddMedication = (newMed) => {
-    // newMed MUST come from a dropdown of real medications from your database
     if (!newMed.id && !newMed.medicationId) {
-       showToast("Please select a valid medication from the list.", "error");
+      showToast("Please select a valid medication from the list.", "error");
       return;
     }
 
@@ -195,16 +183,15 @@ function DoctorDash() {
       },
     ]);
   };
+
   const handleFinishSession = async () => {
     if (!activeCase) return;
 
     try {
-
-      // Format strictly for the backend schema
       const targetMedications = prescribedMeds.map((m) => ({
         medicationId: Number(m.medicationId),
         dosage: Number(m.dosage),
-        frequency: Number(m.frequency), 
+        frequency: Number(m.frequency),
         duration: String(m.duration),
       }));
 
@@ -221,6 +208,7 @@ function DoctorDash() {
       await refreshConsultationQueue();
 
       setActiveQueueId("");
+      setMobileView("queue");
       showToast("Consultation finalized successfully. Case dispatched to pharmacy.", "success");
     } catch (err) {
       console.error("Consultation submission crash:", err);
@@ -239,87 +227,224 @@ function DoctorDash() {
     }
   };
 
+  // Loading State
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          user={currentUser}
+          searchPlaceholder="Filter clinical queue..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          hasNotifications={true}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+          <p className="text-gray-600 font-medium">Loading clinical queue...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty State
+  if (!activeCase) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-50">
+        <Header
+          user={currentUser}
+          searchPlaceholder="Filter clinical queue..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          hasNotifications={true}
+        />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-4">
+            <svg
+              className="w-6 h-6 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+            All consultations completed
+          </h3>
+          <p className="text-sm text-gray-600 text-center max-w-md">
+            There are no outpatient medical consultations pending for this session. Great work!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-screen bg-[#f8fafc] overflow-hidden px-4 py-3">
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       <Header
         user={currentUser}
-        searchPlaceholder="Filter clinical queue records..."
+        searchPlaceholder="Filter clinical queue..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         hasNotifications={true}
       />
 
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center text-slate-400">
-          Syncing incoming clinical triage metrics...
-        </div>
-      ) : activeCase ? (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden p-4 gap-4">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Active Consultation Header */}
+        <div className="flex-shrink-0 px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 border-b border-gray-200 bg-white">
           <ActiveConsultationHeader
-            className="shrink-0"
             caseData={activeCase}
             onFinish={handleFinishSession}
           />
+        </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch flex-1 min-h-0 overflow-hidden">
-            <div className="lg:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch h-full overflow-hidden">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
-                <PatientVisitQueue
-                  queue={reactiveQueue}
-                  selectedId={activeQueueId}
-                  onSelect={setActiveQueueId}
-                  onClaim={handleClaimPatient}
+        {/* Mobile Tab Navigation */}
+        <div className="lg:hidden flex-shrink-0 border-b border-gray-200 bg-white">
+          <div className="flex gap-1 px-4 overflow-x-auto -mb-px">
+            <button
+              onClick={() => setMobileView("queue")}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                mobileView === "queue"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Queue
+            </button>
+            <button
+              onClick={() => setMobileView("history")}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                mobileView === "history"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              History
+            </button>
+            <button
+              onClick={() => setMobileView("soap")}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                mobileView === "soap"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              SOAP
+            </button>
+            <button
+              onClick={() => setMobileView("medications")}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                mobileView === "medications"
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Rx
+            </button>
+          </div>
+        </div>
 
-                />
-              </div>
-
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col h-full p-3 overflow-y-auto">
-                <ClinicalHistoryTimeline
-                  history={patientHistory}
-                  activeMeds={prescribedMeds}
-                />
-              </div>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 lg:py-6">
+          
+          {/* Left Panel - Queue & History */}
+          <div
+            className={`${
+              mobileView !== "queue" && mobileView !== "history"
+                ? "hidden lg:flex"
+                : "flex"
+            } flex-col lg:flex-row lg:w-2/5 gap-4 sm:gap-5 min-h-0 overflow-hidden`}
+          >
+            {/* Queue Section */}
+            <div
+              className={`${
+                mobileView === "history" ? "hidden lg:flex" : "flex"
+              } flex-1 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden`}
+            >
+              <PatientVisitQueue
+                queue={reactiveQueue}
+                selectedId={activeQueueId}
+                onSelect={(id) => {
+                  setActiveQueueId(id);
+                  setMobileView("history");
+                }}
+                onClaim={handleClaimPatient}
+              />
             </div>
 
-            <div className="lg:col-span-5 flex flex-col gap-4 h-full overflow-y-auto pr-1">
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm shrink-0">
-                <SoapNotesForm
-                  className="h-full"
-                  data={soapNotes}
-                  onChange={handleSoapChange}
-                  needsFollowUp={needsFollowUp}
-                  onFollowUpChange={setNeedsFollowUp}
+            {/* History Section */}
+            <div
+              className={`${
+                mobileView === "queue" ? "hidden lg:flex" : "flex"
+              } flex-1 bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6`}
+            >
+              <ClinicalHistoryTimeline
+                history={patientHistory}
+                activeMeds={prescribedMeds}
+              />
+            </div>
+          </div>
+
+          {/* Right Panel - SOAP & Medications */}
+          <div
+            className={`${
+              mobileView === "queue" || mobileView === "history"
+                ? "hidden lg:flex"
+                : "flex"
+            } flex-col lg:w-3/5 gap-4 sm:gap-5 min-h-0 overflow-hidden`}
+          >
+            {/* SOAP Notes Section */}
+            <div
+              className={`${
+                mobileView !== "soap" ? "hidden lg:flex" : "flex"
+              } bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6`}
+            >
+              <SoapNotesForm
+                data={soapNotes}
+                onChange={handleSoapChange}
+                needsFollowUp={needsFollowUp}
+                onFollowUpChange={setNeedsFollowUp}
+              />
+            </div>
+
+            {/* Medications & Symptoms Section */}
+            <div
+              className={`${
+                mobileView !== "medications" ? "hidden lg:flex" : "flex"
+              } flex-1 gap-4 sm:gap-5 grid grid-cols-1 md:grid-cols-2 min-h-0 overflow-hidden`}
+            >
+              {/* Symptoms */}
+              <div className="bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6 flex">
+                <SymptomsAndActions
+                  symptoms={symptoms}
+                  onToggle={handleToggleSymptom}
+                  onAddTreatment={(act) =>
+                    showToast(`Action queued: ${act.text}`, "info")
+                  }
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[300px]">
-                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full">
-                  <SymptomsAndActions
-                    className="h-full"
-                    symptoms={symptoms}
-                    onToggle={handleToggleSymptom}
-                    onAddTreatment={(act) => showToast(`Action queued: ${act.text}`, "info")}
-                  />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-col justify-between h-full">
-                  <PrescriptionOrderEntry
-                    onAdd={handleAddMedication}
-                    allMedications={allMedications}
-                  />
-                </div>
+              {/* Prescriptions */}
+              <div className="bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6 flex">
+                <PrescriptionOrderEntry
+                  onAdd={handleAddMedication}
+                  allMedications={allMedications}
+                />
               </div>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center flex-1 text-slate-400">
-          <p className="text-sm font-medium">
-            All outpatient medical consultations have been concluded for this
-            session slice.
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

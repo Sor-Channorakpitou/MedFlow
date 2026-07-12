@@ -13,17 +13,16 @@ export default function AuthCard() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    // Prevent default HTML form submission reload
+    e.preventDefault();
     if (loading) return;
 
     setLoading(true);
     setError("");
 
     try {
-      // login() authenticates, sets the access token, and sets the user in context
       const user = await login({ email, password });
-
-      // user.role comes from toUserDTO: { id, name }
       const roleName = user?.role?.name ?? user?.role;
       if (!roleName) throw new Error("Unknown role");
 
@@ -51,7 +50,7 @@ export default function AuthCard() {
         </div>
       </div>
 
-      <h2 className="text-3xl font-bold text-center">
+      <h2 className="text-3xl font-bold text-center text-slate-900">
         Log In to your clinic
       </h2>
 
@@ -59,11 +58,12 @@ export default function AuthCard() {
         Access the MedFlow clinical network
       </p>
 
-      <div className="mt-8 space-y-5">
+      {/* Changed container to a semantic form element */}
+      <form onSubmit={handleLogin} className="mt-8 space-y-5">
 
         {/* Error Alert */}
         {error && (
-          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
             <AlertCircle size={20} className="mt-0.5 shrink-0" />
 
             <div className="flex-1">
@@ -72,8 +72,9 @@ export default function AuthCard() {
             </div>
 
             <button
+              type="button"
               onClick={() => setError("")}
-              className="text-red-500 hover:text-red-700"
+              className="text-red-500 hover:text-red-700 transition-colors"
             >
               <X size={18} />
             </button>
@@ -82,21 +83,23 @@ export default function AuthCard() {
 
         {/* Email */}
         <div>
-          <label className="font-medium block mb-2">
+          <label htmlFor="email" className="font-medium block mb-2 text-sm text-gray-700">
             Work Email
           </label>
 
-          <div className="flex border rounded-md">
-            <div className="px-3 flex items-center">
+          <div className="flex border rounded-md items-center bg-white focus-within:ring-2 focus-within:ring-slate-900 focus-within:border-slate-900 transition-shadow">
+            <div className="pl-3 pr-2 flex items-center text-gray-400">
               <Mail size={18} />
             </div>
 
             <input
+              id="email"
               type="email"
               value={email}
               disabled={loading}
+              required
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 p-3 outline-none disabled:bg-gray-100"
+              className="flex-1 p-3 outline-none text-sm bg-transparent disabled:bg-gray-100 rounded-r-md"
               placeholder="doctor@medflow.com"
             />
           </div>
@@ -104,21 +107,23 @@ export default function AuthCard() {
 
         {/* Password */}
         <div>
-          <label className="font-medium block mb-2">
+          <label htmlFor="password" className="font-medium block mb-2 text-sm text-gray-700">
             Password
           </label>
 
-          <div className="flex border rounded-md">
-            <div className="px-3 flex items-center">
+          <div className="flex border rounded-md items-center bg-white focus-within:ring-2 focus-within:ring-slate-900 focus-within:border-slate-900 transition-shadow">
+            <div className="pl-3 pr-2 flex items-center text-gray-400">
               <Lock size={18} />
             </div>
 
             <input
+              id="password"
               type={showPassword ? "text" : "password"}
               value={password}
               disabled={loading}
+              required
               onChange={(e) => setPassword(e.target.value)}
-              className="flex-1 p-3 outline-none disabled:bg-gray-100"
+              className="flex-1 p-3 outline-none text-sm bg-transparent disabled:bg-gray-100"
               placeholder="••••••••"
             />
 
@@ -126,18 +131,19 @@ export default function AuthCard() {
               type="button"
               disabled={loading}
               onClick={() => setShowPassword(!showPassword)}
-              className="px-3 text-gray-500 hover:text-gray-700"
+              className="px-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+              tabIndex="-1" // Skips tab indexes so users focus straight into the Log In button
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
 
-        {/* Login Button */}
+        {/* Submit Button changed to type="submit" */}
         <button
-          onClick={handleLogin}
+          type="submit"
           disabled={loading}
-          className="w-full bg-slate-900 text-white py-3 rounded-md font-medium flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full bg-slate-900 text-white py-3 rounded-md font-medium flex items-center justify-center gap-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (
             <>
@@ -150,12 +156,12 @@ export default function AuthCard() {
         </button>
 
         <div className="flex justify-center">
-          <div className="flex items-center gap-2 border rounded-full px-4 py-2 text-sm text-gray-500">
-            <Shield size={16} />
+          <div className="flex items-center gap-2 border rounded-full px-4 py-2 text-xs text-gray-500 bg-gray-50">
+            <Shield size={14} />
             Protected by MedFlow Secure Auth
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
