@@ -4,7 +4,7 @@ const RESOURCE_URL = '/triage';
 
 export const createTriageRecord = async (triageData) => {
   const response = await api.post(RESOURCE_URL, triageData);
-  return response.data;
+  return response.data; 
 };
 
 export const getLiveQueue = async () => {
