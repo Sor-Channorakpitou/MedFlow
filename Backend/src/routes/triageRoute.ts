@@ -61,7 +61,7 @@ router.patch("/queue/:queueId/claim", authenticate, authorize(["ADMIN", "NURSE"]
  *       401:
  *         description: Unauthorized
  */
-router.get("/queue", authenticate, authorize(["ADMIN","DOCTOR", "NURSE", "RECEPTIONIST"]), getQueue);
+router.get("/queue", authenticate, authorize(["ADMIN","DOCTOR", "NURSE", "RECEPTIONIST", "PHARMACIST"]), getQueue);
 
 /**
  * @swagger
