@@ -1,37 +1,36 @@
-import {  useEffect } from "react";
-import  { useAuth } from "../hooks/useAuth";
+import { useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
 import { socket, connectSocket } from "../services/socket";
 import { SocketContext } from "./SocketContextCore";
 
-
 export function SocketProvider({ children }) {
-    const { user } = useAuth();
-    const userId = user?.id;
-    const roleName = user?.role?.name;
-    const accessToken = user?.accessToken
+    const { user, getAccessToken } = useAuth();
 
     useEffect(() => {
-        if (!userId) {
+        if (!user?.id) {
             if (socket.connected) socket.disconnect();
             return;
         }
 
-        const onConnect = () => {
-            console.log("Socket connected:", socket.id);
+        const handleConnectError = (err) => {
+            console.warn("Socket connect error:", err.message);
+            if (err.message === "Unauthorized") {
+                const token = getAccessToken();
+                if (token) connectSocket(token);
+            }
         };
 
-        socket.on("connect", onConnect);
-         connectSocket(accessToken);
+        socket.on("connect_error", handleConnectError);
 
-
-        if (socket.connected) onConnect();
+        if (!socket.connected) {
+            const token = getAccessToken();
+            if (token) connectSocket(token);
+        }
 
         return () => {
-            socket.off("connect", onConnect);
-            
-            // socket.disconnect();
+            socket.off("connect_error", handleConnectError);
         };
-    }, [userId, roleName]);
+    }, [user?.id, getAccessToken]);
 
     return (
         <SocketContext.Provider value={socket}>

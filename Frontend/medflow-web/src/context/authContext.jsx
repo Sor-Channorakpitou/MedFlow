@@ -8,6 +8,7 @@ export const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [accessToken, setAccessTokenState] = useState(null);
 
     const initializeAuth = async () => {
         try {
@@ -16,6 +17,7 @@ export function AuthProvider({ children }) {
             const tokenRes = await authAPI.refresh();
 
             setAccessToken(tokenRes.accessToken);
+            setAccessTokenState(tokenRes.accessToken);
 
             // connect websocket
             connectSocket(tokenRes.accessToken);
@@ -32,13 +34,14 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         initializeAuth();
-    }, []); // bootstraps auth once on app load — no dependency on isAuthenticated, this IS what determines it
+    }, []); 
 
     const login = async (credentials) => {
         const res = await authAPI.login(credentials);
 
         // save access token in memory
         setAccessToken(res.accessToken);
+        setAccessTokenState(res.accessToken);
 
         // connect web socket
         connectSocket(res.accessToken);
@@ -54,6 +57,7 @@ export function AuthProvider({ children }) {
         } finally {
             disconnectSocket();
             setAccessToken(null);
+            setAccessTokenState(null);
             setUser(null);
         }
     };
@@ -65,6 +69,8 @@ export function AuthProvider({ children }) {
         }));
     };
 
+    const getAccessToken = () => accessToken;
+
     const value = {
         user,
         updateCurrentUser,
@@ -73,6 +79,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         refreshUser: initializeAuth,
+        getAccessToken,
     };
 
     return (
