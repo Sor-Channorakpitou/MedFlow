@@ -25,7 +25,8 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
 
 export const getAllAppointments = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const appointments = await findAppointments();
+        const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+        const appointments = await findAppointments(startDate, endDate);
 
         if(appointments.length === 0) return res.status(404).json({ message: "No appointment found" });
 

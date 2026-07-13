@@ -5,11 +5,14 @@ import { adminResetUserPassword, deactivateUser, findAllUsers, findUserById, ins
 
 export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const users = await findAllUsers();
+        const page = Math.max(1, Number(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+        const search = (req.query.search as string) || "";
+        const result = await findAllUsers(page, limit, search);
 
-        if(users.length === 0) return res.status(404).json({ message: "No users found" });
+        if(result.users.length === 0) return res.status(404).json({ message: "No users found" });
     
-        return res.json(users);
+        return res.json(result);
     } catch (error) {
         next(error);
     }

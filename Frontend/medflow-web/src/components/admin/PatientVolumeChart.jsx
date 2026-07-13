@@ -1,26 +1,28 @@
 import { useMemo } from 'react';
 
-function PatientVolumeChart({ appointments = [] }) {
-  const intervals = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
+const LABELS = ['Day -6', 'Day -5', 'Day -4', 'Day -3', 'Day -2', 'Day -1', 'Today'];
 
+function PatientVolumeChart({ dailyCounts = [], total = 0 }) {
   const { areaPath, strokePath } = useMemo(() => {
-    const baseVolume = appointments.length;
-    // Generate simple dynamic heights based on total volume
-    const points = [
-      Math.max(130 - (baseVolume * 2), 20),
-      Math.max(100 - (baseVolume * 5), 20),
-      Math.max(60 - (baseVolume * 8), 20), 
-      Math.max(85 - (baseVolume * 4), 20),
-      Math.max(110 - (baseVolume * 2), 20),
-      120,
-      140 
-    ];
+    const bins = dailyCounts.length === 7 ? dailyCounts : Array(7).fill(0);
+    const maxVal = Math.max(...bins, 1);
+    const width = 600;
+    const height = 150;
+    const stepX = width / (bins.length - 1 || 1);
 
-    const sPath = `M 0 ${points[0]} L 100 ${points[1]} L 200 ${points[2]} L 300 ${points[3]} L 400 ${points[4]} L 500 ${points[5]} L 600 ${points[6]}`;
-    const aPath = `${sPath} L 600 150 L 0 150 Z`;
+    const points = bins.map((count, i) => ({
+      x: i * stepX,
+      y: height - (count / maxVal) * (height - 20),
+    }));
 
-    return { areaPath: aPath, strokePath: sPath };
-  }, [appointments]);
+    const strokePath = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+      .join(' ');
+
+    const areaPath = `${strokePath} L ${width} ${height} L 0 ${height} Z`;
+
+    return { areaPath, strokePath };
+  }, [dailyCounts]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm h-full flex flex-col justify-between">
@@ -28,7 +30,7 @@ function PatientVolumeChart({ appointments = [] }) {
         <h3 className="text-sm font-bold text-gray-900">Daily Patient Volume</h3>
         <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
           <div className="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse" />
-          Live Trend ({appointments.length} Total)
+          Live Trend ({total} Total)
         </div>
       </div>
 
@@ -51,7 +53,12 @@ function PatientVolumeChart({ appointments = [] }) {
       </div>
 
       <div className="flex justify-between border-t border-gray-100 pt-3 mt-4 text-[11px] font-medium text-gray-400 px-1">
-        {intervals.map((time, i) => <span key={i}>{time}</span>)}
+        {LABELS.map((label, i) => (
+          <span key={i} className="flex flex-col items-center gap-0.5">
+            <span>{label}</span>
+            <span className="text-[9px] text-gray-300">{dailyCounts[i] ?? 0}</span>
+          </span>
+        ))}
       </div>
     </div>
   );

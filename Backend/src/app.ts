@@ -18,6 +18,7 @@ import triageRouter from "./routes/triageRoute.js";
 import consultationRouter from "./routes/consultationRoutes.js"
 import prescriptionRouter from "./routes/prescriptionRoutes.js"
 import medicationRouter from "./routes/medicationRoutes.js"
+import adminRouter from "./routes/adminRoute.js"
 
 const app = express();
 dotenv.configDotenv();
@@ -50,6 +51,7 @@ app.use('/api/triage', triageRouter);
 app.use("/api/consultation", consultationRouter);
 app.use("/api/prescriptions", prescriptionRouter);
 app.use("/api/medications", medicationRouter);
+app.use("/api/admin", adminRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

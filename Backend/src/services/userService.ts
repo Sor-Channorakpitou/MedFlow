@@ -14,15 +14,37 @@ type CreateUserInput = {
     roleId: number;
 };
 
-export const findAllUsers = async () => {
-    const users = await prisma.user.findMany({
-        include: { role: true },
-        orderBy: { name: "asc" },
-    });
+export const findAllUsers = async (page = 1, limit = 20, search = "") => {
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (search) {
+        where.OR = [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+        ];
+    }
+
+    const [users, totalCount] = await Promise.all([
+        prisma.user.findMany({
+            where,
+            include: { role: true },
+            orderBy: { name: "asc" },
+            skip,
+            take: limit,
+        }),
+        prisma.user.count({ where }),
+    ]);
 
     if(!users) throw new Error("NO_RESOURCES"); 
 
-    return users.map(toUserDTO);
+    return {
+        users: users.map(toUserDTO),
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        page,
+        limit,
+    };
 };
 
 export const findUserById = async (id: number) => {

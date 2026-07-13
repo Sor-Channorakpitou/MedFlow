@@ -2,8 +2,11 @@
 import api from "./api";
 const API_BASE_URL = '/appointments';
 
-export const getAllAppointments = async () => {
-    const res = await api.get(`${API_BASE_URL}`);
+export const getAllAppointments = async (startDate, endDate) => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    const res = await api.get(`${API_BASE_URL}`, { params });
     return res.data;
 };
 

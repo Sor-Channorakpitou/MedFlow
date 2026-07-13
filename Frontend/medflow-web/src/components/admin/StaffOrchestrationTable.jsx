@@ -105,7 +105,7 @@ function ManageStaffModal({ staff, onClose, onSaved }) {
 }
 
 function StaffOrchestrationTable({ 
-    selectedDept, onDeptChange, appointments = [],
+    selectedDept, onDeptChange,
     staffList =[], loading = false, fetchStaff, setStaffList, error = false, isSuperAdmin = false
 }) {
 
@@ -133,10 +133,6 @@ function StaffOrchestrationTable({
         return [...staffList]
             .filter(staff => staff.role?.name !== "ADMIN" && (selectedDept === "All Roles" || staff.role?.name === selectedDept))
             .map(staff => {
-                const loadCount = appointments.filter(
-                    a => a.userId === staff.id && (a.status === 'PENDING' || a.status === 'CONFIRMED')
-                ).length;
-
                 const initials = staff.name
                     ? staff.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
                     : '?';
@@ -144,11 +140,9 @@ function StaffOrchestrationTable({
                 return {
                     ...staff,
                     avatar: initials,
-                    loadCount,
-                    load: loadCount === 1 ? '1 Patient' : loadCount > 1 ? `${loadCount} Patients` : 'Unassigned',
                 };
             });
-    }, [staffList, selectedDept, appointments]);
+    }, [staffList, selectedDept]);
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -214,7 +208,6 @@ function StaffOrchestrationTable({
                             <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                 <th className="px-6 py-3.5">Clinical Staff</th>
                                 <th className="px-6 py-3.5">Role</th>
-                                <th className="px-6 py-3.5">Current Load</th>
                                 <th className="px-6 py-3.5">Status</th>
                                 <th className="px-6 py-3.5 text-right">Actions</th>
                             </tr>
@@ -234,25 +227,6 @@ function StaffOrchestrationTable({
 
                                     <td className="px-6 py-4">
                                         <span className="font-semibold text-gray-800 block">{staff.role?.name || 'Unassigned'}</span>
-                                    </td>
-
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1.5">
-                                            {staff.loadCount > 0 ? (
-                                                <>
-                                                    <div className="flex -space-x-1">
-                                                        <div className="w-4 h-4 rounded-full bg-teal-600 text-[8px] font-bold text-white flex items-center justify-center border border-white">P1</div>
-                                                        {staff.loadCount > 1 && <div className="w-4 h-4 rounded-full bg-blue-500 text-[8px] font-bold text-white flex items-center justify-center border border-white">P2</div>}
-                                                        {staff.loadCount > 2 && (
-                                                            <div className="w-4 h-4 rounded-full bg-gray-200 text-[7px] font-bold text-gray-600 flex items-center justify-center border border-white">+{staff.loadCount - 2}</div>
-                                                        )}
-                                                    </div>
-                                                    <span className="font-medium text-gray-600">{staff.load}</span>
-                                                </>
-                                            ) : (
-                                                <span className="text-gray-400 font-medium">{staff.load}</span>
-                                            )}
-                                        </div>
                                     </td>
 
                                     <td className="px-6 py-4">

@@ -85,8 +85,17 @@ export const insertAppointment = async (data: AppointmentInfo) => {
     );
 };
 
-export const findAppointments = async () => {
+export const findAppointments = async (startDate?: string, endDate?: string) => {
+  const where: any = {};
+
+  if (startDate || endDate) {
+    where.appointmentDate = {};
+    if (startDate) where.appointmentDate.gte = new Date(startDate);
+    if (endDate) where.appointmentDate.lte = new Date(endDate);
+  }
+
   const appointments = await prisma.appointment.findMany({
+    where,
     include: {
       patient: true,
       user: { include: { role: true } },

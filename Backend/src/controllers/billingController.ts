@@ -60,8 +60,8 @@ export const updateInvoiceById = async (req: Request, res: Response, next: NextF
 
 export const getAllInvoices = async (req: Request, res: Response, next: NextFunction) => {
     try {
-
-        const invoices = await getInvoices();
+        const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+        const invoices = await getInvoices(startDate, endDate);
 
         if(invoices.length === 0) return res.status(404).json({ message: "No invoice found" });
 

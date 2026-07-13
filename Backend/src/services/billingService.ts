@@ -105,8 +105,17 @@ export const updateInvoice = async (id: number,
     );
 };
 
-export const getInvoices = async () => {
+export const getInvoices = async (startDate?: string, endDate?: string) => {
+    const where: any = {};
+
+    if (startDate || endDate) {
+      where.issuedDate = {};
+      if (startDate) where.issuedDate.gte = new Date(startDate);
+      if (endDate) where.issuedDate.lte = new Date(endDate);
+    }
+
     const invoices = await prisma.invoice.findMany({
+      where,
       include: {
         patient: true,
         user: true,

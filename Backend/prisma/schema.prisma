@@ -81,6 +81,7 @@ model Appointment {
 
   @@index([userId])
   @@index([patientId])
+  @@index([appointmentDate])
 }
 
 model Medication {
@@ -120,6 +121,7 @@ model Invoice {
   invoiceItems  InvoiceItem[]
 
   @@index([patientId])
+  @@index([issuedDate])
 }
 
 model MedicalRecord {
@@ -221,6 +223,8 @@ model Queue {
   patient             Patient        @relation(fields: [patientId], references: [id])
   requiredSpecialty   Specialty?     @relation(fields: [requiredSpecialtyId], references: [id])
   histories           QueueHistory[]
+
+  @@index([status, stage])
 }
 
 model playing_with_neon {

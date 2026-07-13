@@ -8,8 +8,7 @@ import { Calendar, FileText, Check, AlertCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import MonthlyProfitChart from "../components/admin/MonthlyFinanceChart";
-import { getAllInvoices } from "../services/billingAPI";
-import { getAllAppointments } from "../services/appointmentAPI";
+import { getAdminAnalytics } from "../services/adminAnalyticsAPI";
 import { getAllUsers } from "../services/userAPI";
 import { getAllQueues } from "../services/queueAPI";
 import { useSocket } from "../hooks/useSocket";
@@ -18,18 +17,28 @@ import { useAuth } from "../hooks/useAuth";
 
 const TIMEFRAME_OPTIONS = ["Last 24 Hours", "Last 7 Days", "Last 30 Days", "All Time"];
 
-const getAppointmentDate = (appointment) =>
-  appointment.createdAt ? new Date(appointment.createdAt) : null;
+const getDateRange = (timeframe) => {
+  if (timeframe === "All Time") return { startDate: undefined, endDate: undefined };
+
+  const now = new Date();
+  const start = new Date(now);
+
+  if (timeframe === "Last 24 Hours") start.setHours(now.getHours() - 24);
+  else if (timeframe === "Last 7 Days") start.setDate(now.getDate() - 7);
+  else if (timeframe === "Last 30 Days") start.setDate(now.getDate() - 30);
+
+  return { startDate: start.toISOString(), endDate: now.toISOString() };
+};
 
 function AdminDash() {
   const socket = useSocket();
   const { user } = useAuth();
 
   const [timeframe, setTimeframe] = useState("Last 24 Hours");
-  const [invoices, setInvoices] = useState([]);
-  const [appointments, setAppointments] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [users, setUsers] = useState([]);
   const [queues, setQueues] = useState([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDept, setSelectedDept] = useState("All Roles");
@@ -39,29 +48,11 @@ function AdminDash() {
   const [isExporting, setIsExporting] = useState(false);
   const timeframeRef = useRef(null);
 
-  // ─── Data fetchers ────────────────────────────────────────────────────────
-  const fetchInvoices = useCallback(async () => {
-    try {
-      const res = await getAllInvoices();
-      setInvoices(Array.isArray(res) ? res : []);
-    } catch {
-      setInvoices([]);
-    }
-  }, []);
-
-  const fetchAppointments = useCallback(async () => {
-    try {
-      const res = await getAllAppointments();
-      setAppointments(Array.isArray(res) ? res : []);
-    } catch {
-      setAppointments([]);
-    }
-  }, []);
-
   const fetchUsers = useCallback(async () => {
     try {
       const res = await getAllUsers();
-      setUsers(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : res?.users ?? [];
+      setUsers(list);
     } catch {
       setUsers([]);
     }
@@ -76,15 +67,20 @@ function AdminDash() {
     }
   }, []);
 
-  // ─── Initial load ─────────────────────────────────────────────────────────
+  const fetchAnalytics = useCallback(async (tf) => {
+    const { startDate, endDate } = getDateRange(tf);
+    const data = await getAdminAnalytics(startDate, endDate);
+    setAnalytics(data);
+  }, []);
+
+  // Initial load 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         setError("");
         await Promise.allSettled([
-          fetchInvoices(),
-          fetchAppointments(),
+          fetchAnalytics(timeframe),
           fetchUsers(),
           fetchQueues(),
         ]);
@@ -92,12 +88,30 @@ function AdminDash() {
         setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
+        setAnalyticsLoading(false);
       }
     };
     load();
-  }, [fetchInvoices, fetchAppointments, fetchUsers, fetchQueues]);
+  }, []); 
 
-  // ─── Socket: refresh queues on any queue-related event ──────────────────
+  // Re-fetch analytics when timeframe changes (optimistic) 
+  useEffect(() => {
+    if (!analytics) return;
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    const { startDate, endDate } = getDateRange(timeframe);
+    getAdminAnalytics(startDate, endDate).then((data) => {
+      if (!cancelled) {
+        setAnalytics(data);
+        setAnalyticsLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setAnalyticsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Socket: refresh queues 
   useEffect(() => {
     if (!socket) return;
     const refresh = () => fetchQueues();
@@ -115,7 +129,7 @@ function AdminDash() {
     };
   }, [socket, fetchQueues]);
 
-  // ─── Close timeframe dropdown on outside click ──────────────────────────
+  // Close timeframe dropdown on outside click 
   useEffect(() => {
     const handler = (e) => {
       if (timeframeRef.current && !timeframeRef.current.contains(e.target)) {
@@ -126,78 +140,35 @@ function AdminDash() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ─── Debounced search ────────────────────────────────────────────────────
+  // Debounced search 
   useEffect(() => {
     const h = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(h);
   }, [search]);
 
-  // ─── Timeframe filter on appointments ───────────────────────────────────
-  const filteredAppointments = useMemo(() => {
-    if (timeframe === "All Time") return appointments;
-    const now = new Date();
-    const cutoff = new Date(now);
-    if (timeframe === "Last 24 Hours") cutoff.setHours(now.getHours() - 24);
-    else if (timeframe === "Last 7 Days") cutoff.setDate(now.getDate() - 7);
-    else if (timeframe === "Last 30 Days") cutoff.setDate(now.getDate() - 30);
-    return appointments.filter((app) => {
-      const d = getAppointmentDate(app);
-      return d ? d >= cutoff : true;
+  // Derived data from analytics 
+  const appointmentVolume = analytics?.appointmentVolume ?? {};
+  const revenueTrend = analytics?.revenueTrend ?? {};
+  const liveMetrics = analytics?.liveMetrics ?? {};
+  const stageBreakdown = analytics?.stageBreakdown ?? [];
+  const serviceBreakdown = analytics?.serviceBreakdown ?? [];
+
+  const appointmentVolumeBins = useMemo(() => {
+    const bins = Array(7).fill(0);
+    const entries = Object.entries(appointmentVolume).sort(([a], [b]) => a.localeCompare(b));
+    entries.slice(-7).forEach(([, count], i) => {
+      bins[i] = count;
     });
-  }, [appointments, timeframe]);
+    return bins;
+  }, [appointmentVolume]);
 
-  // ─── Live metrics ────────────────────────────────────────────────────────
-  const liveMetrics = useMemo(() => {
-    const activeQueues = queues.filter(
-      (q) => q.status !== "COMPLETED" && q.status !== "CANCELLED"
-    );
+  const revenueTrendData = useMemo(() => {
+    return Object.entries(revenueTrend)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({ date, total }));
+  }, [revenueTrend]);
 
-    const totalPatients = new Set(activeQueues.map((q) => q.patientId)).size;
-
-    const triageBacklog = activeQueues.filter(
-      (q) => q.stage === "TRIAGE" && q.status === "WAITING"
-    ).length;
-
-    const activeConsultations = activeQueues.filter(
-      (q) => q.stage === "DOCTOR" && q.status === "PROCESSING"
-    ).length;
-
-    const criticalAlerts = activeQueues.filter(
-      (q) => q.appointment?.triage?.urgencyLevel === "CRITICAL"
-    ).length;
-
-    const totalRevenue = invoices
-      .filter((i) => i.paymentStatus === "PAID")
-      .reduce((sum, i) => sum + Number(i.totalAmount ?? 0), 0)
-      .toFixed(2);
-
-    const pendingBilling = activeQueues.filter((q) => q.stage === "BILLING").length;
-
-    return {
-      totalPatients,
-      triageBacklog,
-      activeConsultations,
-      criticalAlerts,
-      totalRevenue: Number(totalRevenue),
-      pendingBilling,
-    };
-  }, [queues, invoices]);
-
-  // ─── Workload by stage ───────────────────────────────────────────────────
-  const stageBreakdown = useMemo(() => {
-    const active = queues.filter(
-      (q) => q.status !== "COMPLETED" && q.status !== "CANCELLED"
-    );
-    const total = active.length || 1;
-
-    const stages = ["TRIAGE", "DOCTOR", "PHARMACY", "BILLING"];
-    return stages.map((stage) => {
-      const count = active.filter((q) => q.stage === stage).length;
-      return { stage, count, pct: Math.round((count / total) * 100) };
-    });
-  }, [queues]);
-
-  // ─── Filtered staff list ─────────────────────────────────────────────────
+  // Filtered staff list (client-side search)
   const filteredStaff = useMemo(() => {
     const keyword = debouncedSearch.toLowerCase().trim();
     if (!keyword) return users;
@@ -209,7 +180,7 @@ function AdminDash() {
     );
   }, [users, debouncedSearch]);
 
-  // ─── PDF Export ──────────────────────────────────────────────────────────
+  // PDF Export 
   const handleExportPDF = () => {
     setIsExporting(true);
     try {
@@ -228,12 +199,12 @@ function AdminDash() {
         startY: 40,
         head: [["Metric", "Value"]],
         body: [
-          ["Total Active Patients", liveMetrics.totalPatients],
-          ["Triage Backlog", liveMetrics.triageBacklog],
-          ["Active Consultations", liveMetrics.activeConsultations],
-          ["Critical Alerts", liveMetrics.criticalAlerts],
-          ["Pending Billing", liveMetrics.pendingBilling],
-          ["Total Revenue (Paid)", `$${liveMetrics.totalRevenue}`],
+          ["Total Active Patients", liveMetrics.totalPatients ?? 0],
+          ["Triage Backlog", liveMetrics.triageBacklog ?? 0],
+          ["Active Consultations", liveMetrics.activeConsultations ?? 0],
+          ["Critical Alerts", liveMetrics.criticalAlerts ?? 0],
+          ["Pending Billing", liveMetrics.pendingBilling ?? 0],
+          ["Total Revenue (Paid)", `$${Number(liveMetrics.totalRevenue ?? 0).toFixed(2)}`],
         ],
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 3 },
@@ -247,39 +218,26 @@ function AdminDash() {
       doc.setFontSize(10);
       doc.setTextColor(80);
       const insights = [
-        `• Active patients in system: ${liveMetrics.totalPatients}`,
-        `• Triage waiting: ${liveMetrics.triageBacklog} patients`,
-        `• Doctors currently consulting: ${liveMetrics.activeConsultations}`,
-        `• Critical priority cases: ${liveMetrics.criticalAlerts}`,
-        `• Revenue collected: $${liveMetrics.totalRevenue}`,
+        `• Active patients in system: ${liveMetrics.totalPatients ?? 0}`,
+        `• Triage waiting: ${liveMetrics.triageBacklog ?? 0} patients`,
+        `• Doctors currently consulting: ${liveMetrics.activeConsultations ?? 0}`,
+        `• Critical priority cases: ${liveMetrics.criticalAlerts ?? 0}`,
+        `• Revenue collected: $${Number(liveMetrics.totalRevenue ?? 0).toFixed(2)}`,
       ];
       insights.forEach((text, i) =>
         doc.text(text, 14, insightsY + 8 + i * 6)
       );
 
-      const serviceMap = {};
-      invoices.forEach((invoice) => {
-        (invoice.invoiceItem ?? []).forEach((item) => {
-          const name = item.description || "Unknown Service";
-          if (!serviceMap[name]) serviceMap[name] = { count: 0, revenue: 0 };
-          serviceMap[name].count += 1;
-          serviceMap[name].revenue += Number(item.unitPrice) || 0;
-        });
-      });
-
-      const totalServices = Object.values(serviceMap).reduce(
-        (s, x) => s + x.count,
-        0
-      );
-      const serviceRows = Object.entries(serviceMap).map(([service, data]) => {
-        const avg = data.count > 0 ? data.revenue / data.count : 0;
+      const totalServices = serviceBreakdown.reduce((s, x) => s + x.count, 0);
+      const serviceRows = serviceBreakdown.map((item) => {
+        const avg = item.count > 0 ? item.revenue / item.count : 0;
         return [
-          service,
-          data.count,
-          `$${data.revenue.toFixed(2)}`,
+          item.service,
+          item.count,
+          `$${item.revenue.toFixed(2)}`,
           `$${avg.toFixed(2)}`,
           totalServices > 0
-            ? `${Math.round((data.count / totalServices) * 100)}%`
+            ? `${Math.round((item.count / totalServices) * 100)}%`
             : "0%",
         ];
       });
@@ -287,8 +245,7 @@ function AdminDash() {
       autoTable(doc, {
         startY: insightsY + 40,
         head: [["Service", "Qty", "Revenue", "Avg Price", "Share"]],
-        body:
-          serviceRows.length > 0 ? serviceRows : [["No data", "-", "-", "-", "-"]],
+        body: serviceRows.length > 0 ? serviceRows : [["No data", "-", "-", "-", "-"]],
         theme: "striped",
         headStyles: { fillColor: [20, 184, 166] },
       });
@@ -308,7 +265,7 @@ function AdminDash() {
     }
   };
 
-  // Loading State
+  // Loading State (only on initial load)
   if (loading) {
     return (
       <div className="flex flex-col h-screen bg-gray-50">
@@ -387,6 +344,9 @@ function AdminDash() {
               >
                 <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <span className="flex-1 sm:flex-none text-left">{timeframe}</span>
+                {analyticsLoading && (
+                  <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                )}
               </button>
 
               {isTimeframeOpen && (
@@ -430,10 +390,10 @@ function AdminDash() {
         {/* Charts - Responsive Grid */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
           <div className="lg:col-span-2">
-            <PatientVolumeChart appointments={filteredAppointments} />
+            <PatientVolumeChart dailyCounts={appointmentVolumeBins} total={Object.values(appointmentVolume).reduce((a, b) => a + b, 0)} />
           </div>
           <div className="lg:col-span-1">
-            <MonthlyProfitChart invoices={invoices} />
+            <MonthlyProfitChart revenueTrend={revenueTrendData} totalRevenue={liveMetrics.totalRevenue ?? 0} />
           </div>
         </section>
 
@@ -443,59 +403,36 @@ function AdminDash() {
             Live Queue Workload by Stage
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {stageBreakdown.map(({ stage, count, pct }) => {
-              const stageColors = {
-                TRIAGE: {
-                  bar: "bg-amber-500",
-                  text: "text-amber-700",
-                  bg: "bg-amber-50",
-                },
-                DOCTOR: {
-                  bar: "bg-teal-500",
-                  text: "text-teal-700",
-                  bg: "bg-teal-50",
-                },
-                PHARMACY: {
-                  bar: "bg-indigo-500",
-                  text: "text-indigo-700",
-                  bg: "bg-indigo-50",
-                },
-                BILLING: {
-                  bar: "bg-emerald-500",
-                  text: "text-emerald-700",
-                  bg: "bg-emerald-50",
-                },
-              };
-              const c = stageColors[stage] ?? {
-                bar: "bg-gray-400",
-                text: "text-gray-600",
-                bg: "bg-gray-50",
-              };
-              return (
-                <div
-                  key={stage}
-                  className={`rounded-lg sm:rounded-xl p-3 sm:p-4 ${c.bg} border border-opacity-30`}
-                >
-                  <p
-                    className={`text-[11px] sm:text-xs font-bold uppercase tracking-wide ${c.text}`}
-                  >
-                    {stage}
-                  </p>
-                  <p className="text-xl sm:text-2xl font-black text-gray-900 mt-2">
-                    {count}
-                  </p>
-                  <div className="w-full bg-white/60 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div
-                      className={`h-full ${c.bar} rounded-full transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
+            {stageBreakdown.length > 0
+              ? stageBreakdown.map(({ stage, count, pct }) => {
+                  const stageColors = {
+                    TRIAGE: { bar: "bg-amber-500", text: "text-amber-700", bg: "bg-amber-50" },
+                    DOCTOR: { bar: "bg-teal-500", text: "text-teal-700", bg: "bg-teal-50" },
+                    PHARMACY: { bar: "bg-indigo-500", text: "text-indigo-700", bg: "bg-indigo-50" },
+                    BILLING: { bar: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50" },
+                  };
+                  const c = stageColors[stage] ?? { bar: "bg-gray-400", text: "text-gray-600", bg: "bg-gray-50" };
+                  return (
+                    <div key={stage} className={`rounded-lg sm:rounded-xl p-3 sm:p-4 ${c.bg} border border-opacity-30`}>
+                      <p className={`text-[11px] sm:text-xs font-bold uppercase tracking-wide ${c.text}`}>{stage}</p>
+                      <p className="text-xl sm:text-2xl font-black text-gray-900 mt-2">{count}</p>
+                      <div className="w-full bg-white/60 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div className={`h-full ${c.bar} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1 font-medium">{pct}% of active queue</p>
+                    </div>
+                  );
+                })
+              : ["TRIAGE", "DOCTOR", "PHARMACY", "BILLING"].map((stage) => (
+                  <div key={stage} className="rounded-lg sm:rounded-xl p-3 sm:p-4 bg-gray-50 border border-gray-100">
+                    <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wide text-gray-400">{stage}</p>
+                    <p className="text-xl sm:text-2xl font-black text-gray-300 mt-2">0</p>
+                    <div className="w-full bg-white h-1.5 rounded-full mt-2 overflow-hidden">
+                      <div className="h-full bg-gray-200 rounded-full" style={{ width: "0%" }} />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1 font-medium">0% of active queue</p>
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1 font-medium">
-                    {pct}% of active queue
-                  </p>
-                </div>
-              );
-            })}
+                ))}
           </div>
         </section>
 
@@ -504,7 +441,6 @@ function AdminDash() {
           <StaffOrchestrationTable
             selectedDept={selectedDept}
             onDeptChange={setSelectedDept}
-            appointments={filteredAppointments}
             staffList={filteredStaff}
             loading={loading}
             fetchStaff={fetchUsers}
