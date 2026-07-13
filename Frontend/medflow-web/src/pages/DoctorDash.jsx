@@ -299,7 +299,7 @@ function DoctorDash() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         {/* Active Consultation Header */}
         <div className="flex-shrink-0 px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 border-b border-gray-200 bg-white">
           <ActiveConsultationHeader
@@ -355,7 +355,7 @@ function DoctorDash() {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 min-h-0 overflow-hidden px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 lg:py-6">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-5 lg:gap-6 min-h-0 px-4 sm:px-6 lg:px-8 2xl:px-10 py-4 sm:py-5 lg:py-6">
           
           {/* Left Panel - Queue & History */}
           <div
@@ -401,13 +401,13 @@ function DoctorDash() {
               mobileView === "queue" || mobileView === "history"
                 ? "hidden lg:flex"
                 : "flex"
-            } flex-col lg:w-3/5 gap-4 sm:gap-5 min-h-0 overflow-hidden`}
+            } flex-col lg:w-3/5 gap-4 sm:gap-5 min-h-0 overflow-y-auto`}
           >
             {/* SOAP Notes Section */}
             <div
               className={`${
                 mobileView !== "soap" ? "hidden lg:flex" : "flex"
-              } bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6`}
+              } bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col overflow-hidden p-4 sm:p-5 lg:p-6 flex-shrink-0`}
             >
               <SoapNotesForm
                 data={soapNotes}
@@ -420,8 +420,8 @@ function DoctorDash() {
             {/* Medications & Symptoms Section */}
             <div
               className={`${
-                mobileView !== "medications" ? "hidden lg:flex" : "flex"
-              } flex-1 gap-4 sm:gap-5 grid grid-cols-1 md:grid-cols-2 min-h-0 overflow-hidden`}
+                mobileView !== "medications" ? "hidden lg:grid" : "grid"
+              } gap-4 sm:gap-5 grid-cols-1 md:grid-cols-2 auto-rows-min flex-shrink-0`}
             >
               {/* Symptoms */}
               <div className="bg-white border border-gray-200 rounded-lg sm:rounded-xl shadow-sm flex-col min-h-0 overflow-hidden p-4 sm:p-5 lg:p-6 flex">

@@ -424,8 +424,6 @@ npm run dev
  
 MIT (LICENSE)
 
-Copyright (c) 2026 MedFlow Team
-
 Developed by Sor Channorakpitou and Seng Dina
 
 Cambodia Academy of Digital Technology (CADT)
